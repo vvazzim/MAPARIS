@@ -2,6 +2,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { osintIngestionService } from '../services/osintIngestionService.js';
 import { telegramScraperService } from '../services/telegramScraperService.js';
+import { mediaManifService } from '../services/mediaManifService.js';
 
 const parseTextSchema = z.object({
   text: z.string().min(5, 'Le message brut doit contenir au moins 5 caractères'),
@@ -58,6 +59,49 @@ export const osintRoutes: FastifyPluginAsync = async (fastify) => {
       telegramScraperService.stopPolling();
     } else {
       telegramScraperService.startPolling(3);
+    }
+    return {
+      success: true,
+      active: !status.active,
+    };
+  });
+
+  /**
+   * POST /api/osint/mediamanif/sync
+   * Lance une synchronisation ciblée de la source MediaManif (Paris & IDF)
+   */
+  fastify.post('/api/osint/mediamanif/sync', async () => {
+    const syncResult = await mediaManifService.syncNow();
+    return {
+      success: syncResult.success,
+      message: syncResult.success
+        ? `Synchronisation MediaManif terminée : ${syncResult.parisFiltered} points parisiens traités (${syncResult.newCreated} créés, ${syncResult.clusteredMerged} fusionnés à 50m).`
+        : `Échec de synchronisation : ${syncResult.error}`,
+      result: syncResult,
+    };
+  });
+
+  /**
+   * GET /api/osint/mediamanif/status
+   * Statut de la tâche de fond MediaManif (cron horaire)
+   */
+  fastify.get('/api/osint/mediamanif/status', async () => {
+    return {
+      success: true,
+      status: mediaManifService.getStatus(),
+    };
+  });
+
+  /**
+   * POST /api/osint/mediamanif/toggle
+   * Active ou désactive le cron horaire de MediaManif
+   */
+  fastify.post('/api/osint/mediamanif/toggle', async () => {
+    const status = mediaManifService.getStatus();
+    if (status.active) {
+      mediaManifService.stopPolling();
+    } else {
+      mediaManifService.startPolling(60);
     }
     return {
       success: true,

@@ -3,6 +3,7 @@ import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { setupSocketIO } from './sockets/socketHandler.js';
 import { telegramScraperService } from './services/telegramScraperService.js';
+import { mediaManifService } from './services/mediaManifService.js';
 
 async function bootstrap() {
   try {
@@ -24,6 +25,9 @@ async function bootstrap() {
 
     // Active la surveillance gratuite des canaux publics Telegram (toutes les 5 min)
     telegramScraperService.startPolling(5);
+
+    // Active la synchronisation automatisée MediaManif (toutes les 60 min / 1h)
+    mediaManifService.startPolling(60);
 
     console.log(`
 =====================================================
