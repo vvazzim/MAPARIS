@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { supabase, isSupabaseEnabled } from '../config/supabase.js';
 import { Incident, IncidentQueryFilters, Severity } from '../types/index.js';
+import { getReadableLocation } from '../services/landmarkService.js';
 
 /**
  * Calcul précis de distance orthodromique (Haversine) en mètres
@@ -18,6 +19,90 @@ export function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+/**
+ * Rayon d'impact / périmètre circulaire selon la gravité (en mètres)
+ * danger: 380m, warning: 220m, safe: 140m
+ */
+export function getIncidentRadius(severity: Severity): number {
+  switch (severity) {
+    case 'danger': return 380;
+    case 'warning': return 220;
+    case 'safe': return 140;
+    default: return 200;
+  }
+}
+
+/**
+ * Calcul géométrique rigoureux de l'aire d'intersection entre deux disques circulaires
+ * r1, r2 = rayons en mètres
+ * d = distance entre centres en mètres
+ */
+export function calculateCircleIntersectionArea(r1: number, r2: number, d: number): number {
+  if (d >= r1 + r2) return 0; // Disjoints ou simplement tangents
+  if (d <= Math.abs(r1 - r2)) {
+    // Un des cercles est complètement à l'intérieur de l'autre (100% de recouvrement du plus petit)
+    const minR = Math.min(r1, r2);
+    return Math.PI * minR * minR;
+  }
+  const part1 = (d * d + r1 * r1 - r2 * r2) / (2 * d * r1);
+  const part2 = (d * d + r2 * r2 - r1 * r1) / (2 * d * r2);
+  const clamped1 = Math.max(-1, Math.min(1, part1));
+  const clamped2 = Math.max(-1, Math.min(1, part2));
+  const alpha = 2 * Math.acos(clamped1);
+  const beta = 2 * Math.acos(clamped2);
+  const area = 0.5 * r1 * r1 * (alpha - Math.sin(alpha)) + 0.5 * r2 * r2 * (beta - Math.sin(beta));
+  return Math.max(0, area);
+}
+
+/**
+ * Analyse du croisement géométrique entre deux périmètres de signalement
+ * Vérifie si A croise B à plus de 50% de surface (ou distance <= 50m)
+ */
+export function calculatePerimeterOverlap(
+  lat1: number, lon1: number, sev1: Severity,
+  lat2: number, lon2: number, sev2: Severity,
+  threshold: number = 0.50
+): {
+  distance: number;
+  radius1: number;
+  radius2: number;
+  intersectionArea: number;
+  overlapRatio1: number;
+  overlapRatio2: number;
+  maxOverlapRatio: number;
+  iou: number;
+  shouldMerge: boolean;
+} {
+  const distance = getDistanceMeters(lat1, lon1, lat2, lon2);
+  const radius1 = getIncidentRadius(sev1);
+  const radius2 = getIncidentRadius(sev2);
+
+  const area1 = Math.PI * radius1 * radius1;
+  const area2 = Math.PI * radius2 * radius2;
+  const intersectionArea = calculateCircleIntersectionArea(radius1, radius2, distance);
+
+  const overlapRatio1 = area1 > 0 ? intersectionArea / area1 : 0;
+  const overlapRatio2 = area2 > 0 ? intersectionArea / area2 : 0;
+  const maxOverlapRatio = Math.max(overlapRatio1, overlapRatio2);
+  const unionArea = area1 + area2 - intersectionArea;
+  const iou = unionArea > 0 ? intersectionArea / unionArea : 0;
+
+  // Fusion si le chevauchement dépasse le seuil demandé (> 50%) ou si les coordonnées sont quasi-identiques (<= 50m)
+  const shouldMerge = maxOverlapRatio >= threshold || distance <= 50;
+
+  return {
+    distance,
+    radius1,
+    radius2,
+    intersectionArea,
+    overlapRatio1,
+    overlapRatio2,
+    maxOverlapRatio,
+    iou,
+    shouldMerge,
+  };
 }
 
 export class IncidentRepository {
@@ -52,6 +137,7 @@ export class IncidentRepository {
             }
           });
           console.log(`⚡ [Supabase] ${this.inMemoryCache.size} incidents récents synchronisés`);
+          await this.mergeAllOverlappingIncidents(0.50);
           return;
         }
       } catch (err: any) {
@@ -72,6 +158,7 @@ export class IncidentRepository {
         this.seedInitialData();
         this.persistLocal();
       }
+      await this.mergeAllOverlappingIncidents(0.50);
     } catch {
       this.seedInitialData();
     }
@@ -184,7 +271,7 @@ export class IncidentRepository {
   }
 
   /**
-   * Moteur de recherche d'un incident actif dans un rayon de maxMeters (par défaut 50m)
+   * Moteur de recherche d'un incident actif dans un rayon de maxMeters (fallback)
    */
   findNearbyActiveIncident(lat: number, lng: number, maxMeters: number = 50): Incident | null {
     const now = Date.now();
@@ -192,7 +279,6 @@ export class IncidentRepository {
     let minDistance = Infinity;
 
     for (const incident of this.inMemoryCache.values()) {
-      // Ignore les incidents expirés ou résolus
       if (incident.resolved || new Date(incident.expires_at).getTime() <= now) {
         continue;
       }
@@ -208,7 +294,47 @@ export class IncidentRepository {
   }
 
   /**
-   * Traitement d'un signalement : Clustering géospatial (50m) + Résolution Conflit (Rouge vs Vert) + TTL
+   * Moteur de détection de croisement géométrique :
+   * Recherche un incident actif dont le périmètre circulaire croise le nouveau signalement à plus de 50%
+   */
+  findOverlappingActiveIncident(
+    lat: number,
+    lng: number,
+    severity: Severity,
+    threshold: number = 0.50
+  ): { incident: Incident; overlap: ReturnType<typeof calculatePerimeterOverlap> } | null {
+    const now = Date.now();
+    let bestMatch: { incident: Incident; overlap: ReturnType<typeof calculatePerimeterOverlap> } | null = null;
+    let highestOverlap = 0;
+
+    for (const incident of this.inMemoryCache.values()) {
+      // Ignore les incidents expirés ou résolus
+      if (incident.resolved || new Date(incident.expires_at).getTime() <= now) {
+        continue;
+      }
+
+      const overlap = calculatePerimeterOverlap(
+        lat,
+        lng,
+        severity,
+        incident.lat,
+        incident.lng,
+        incident.severity,
+        threshold
+      );
+
+      // Si le périmètre croise à plus de 50% (ou distance <= 50m)
+      if (overlap.shouldMerge && overlap.maxOverlapRatio >= highestOverlap) {
+        highestOverlap = overlap.maxOverlapRatio;
+        bestMatch = { incident, overlap };
+      }
+    }
+
+    return bestMatch;
+  }
+
+  /**
+   * Traitement d'un signalement : Clustering par croisement de périmètres (>50%) + Résolution Conflit + TTL
    */
   async processIncidentReport(data: {
     lat: number;
@@ -219,12 +345,18 @@ export class IncidentRepository {
     description: string;
     source: string;
   }): Promise<{ incident: Incident; isClusterMerge: boolean; conflictResolved?: boolean }> {
-    const nearby = this.findNearbyActiveIncident(data.lat, data.lng, 50);
+    // Garantit que l'emplacement est toujours un repère parisien ou une adresse lisible, jamais des coordonnées brutes
+    const resolvedLocationName = getReadableLocation(data.lat, data.lng, data.location_name);
+
+    // Détection d'un incident actif dont le périmètre se croise à plus de 50%
+    const overlapMatch = this.findOverlappingActiveIncident(data.lat, data.lng, data.severity, 0.50);
 
     // =========================================================================
-    // CAS 1 : Incident existant dans le rayon de 50 mètres
+    // CAS 1 : Incident existant dont le périmètre croise à plus de 50%
     // =========================================================================
-    if (nearby) {
+    if (overlapMatch) {
+      const nearby = overlapMatch.incident;
+      const { overlap } = overlapMatch;
       const now = new Date();
       const createdAt = new Date(nearby.created_at);
       const currentExpiry = new Date(nearby.expires_at);
@@ -260,7 +392,20 @@ export class IncidentRepository {
         return { incident: nearby, isClusterMerge: true, conflictResolved: true };
       }
 
-      // --- SOUS-CAS 1B : FUSION CLUSTERING (Même catégorie ou renforcement de gravité) ---
+      // --- SOUS-CAS 1B : FUSION CLUSTERING PAR PÉRIMÈTRE (>50% de recouvrement) ---
+      // Calcul du barycentre pondéré pour ajuster le centre réel de l'incident
+      const totalReports = nearby.reports_count + 1;
+      const wOld = nearby.reports_count;
+      const wNew = 1;
+      const mergedLat = Number(((nearby.lat * wOld + data.lat * wNew) / totalReports).toFixed(6));
+      const mergedLng = Number(((nearby.lng * wOld + data.lng * wNew) / totalReports).toFixed(6));
+
+      nearby.lat = mergedLat;
+      nearby.lng = mergedLng;
+      nearby.lon = mergedLng;
+      // Met à jour le nom vers le repère le plus proche du nouveau barycentre
+      nearby.location_name = getReadableLocation(mergedLat, mergedLng, nearby.location_name);
+
       nearby.reports_count += 1;
       nearby.upvotes += 1;
       nearby.reliability_score = this.computeReliability(nearby);
@@ -274,7 +419,6 @@ export class IncidentRepository {
       // Prolongation dynamique du TTL (+30 minutes, max 6h depuis création)
       const maxGlobalExpiry = new Date(createdAt.getTime() + 6 * 3600 * 1000); // 6h max
       const extendedExpiry = new Date(currentExpiry.getTime() + 30 * 60 * 1000); // +30 min
-
       nearby.expires_at = (extendedExpiry > maxGlobalExpiry ? maxGlobalExpiry : extendedExpiry).toISOString();
 
       // Mise à jour de la description avec le signalement le plus récent (strictement limité à 160 caractères)
@@ -282,14 +426,14 @@ export class IncidentRepository {
         nearby.description = data.description.slice(0, 160);
       }
 
-      console.log(`🔗 [Clustering 50m] Fusion avec l'incident [${nearby.id}] - Reports: ${nearby.reports_count}, TTL étendu jusqu'à ${nearby.expires_at}`);
+      console.log(`🔗 [Fusion Périmètres > 50%] Fusion dans [${nearby.id}] - Croisement: ${(overlap.maxOverlapRatio * 100).toFixed(1)}%, Dist: ${overlap.distance.toFixed(0)}m, Barycentre: [${mergedLat}, ${mergedLng}] (${nearby.location_name})`);
 
       await this.saveIncident(nearby);
       return { incident: nearby, isClusterMerge: true };
     }
 
     // =========================================================================
-    // CAS 2 : Aucun incident proche (<50m) -> Création d'un NOUVEAU point
+    // CAS 2 : Aucun périmètre croisé à >50% -> Création d'un NOUVEAU point
     // =========================================================================
     const now = new Date();
     // TTL de base : 1 heure
@@ -300,7 +444,7 @@ export class IncidentRepository {
       lat: data.lat,
       lng: data.lng,
       lon: data.lng,
-      location_name: data.location_name,
+      location_name: resolvedLocationName,
       severity: data.severity,
       category: data.category || 'autre',
       description: data.description,
@@ -318,6 +462,86 @@ export class IncidentRepository {
     console.log(`📍 [Nouveau Point] Incident créé [${newIncident.id}] "${newIncident.location_name}" - Expire à ${newIncident.expires_at}`);
 
     return { incident: newIncident, isClusterMerge: false };
+  }
+
+  /**
+   * Consolidation globale : fusionne tous les incidents actifs existants dont les périmètres se croisent à plus de 50%
+   */
+  async mergeAllOverlappingIncidents(threshold: number = 0.50): Promise<{ mergedCount: number; deletedIds: string[] }> {
+    const now = Date.now();
+    const activeList = Array.from(this.inMemoryCache.values()).filter(
+      (inc) => !inc.resolved && new Date(inc.expires_at).getTime() > now
+    );
+
+    const deletedIds: string[] = [];
+    let mergedCount = 0;
+
+    for (let i = 0; i < activeList.length; i++) {
+      const incA = activeList[i];
+      if (deletedIds.includes(incA.id)) continue;
+
+      for (let j = i + 1; j < activeList.length; j++) {
+        const incB = activeList[j];
+        if (deletedIds.includes(incB.id)) continue;
+
+        const overlap = calculatePerimeterOverlap(
+          incA.lat,
+          incA.lng,
+          incA.severity,
+          incB.lat,
+          incB.lng,
+          incB.severity,
+          threshold
+        );
+
+        if (overlap.shouldMerge) {
+          console.log(`🔗 [Consolidation Périmètres >50%] Fusion [${incB.id}] (${incB.location_name}) -> [${incA.id}] (${incA.location_name}) - Recouvrement: ${(overlap.maxOverlapRatio * 100).toFixed(1)}%`);
+
+          // Barycentre pondéré
+          const total = incA.reports_count + incB.reports_count;
+          const wA = incA.reports_count;
+          const wB = incB.reports_count;
+          const newLat = Number(((incA.lat * wA + incB.lat * wB) / total).toFixed(6));
+          const newLng = Number(((incA.lng * wA + incB.lng * wB) / total).toFixed(6));
+
+          incA.lat = newLat;
+          incA.lng = newLng;
+          incA.lon = newLng;
+          incA.location_name = getReadableLocation(newLat, newLng);
+
+          // Élévation de gravité
+          if (incB.severity === 'danger' || incA.severity === 'danger') {
+            incA.severity = 'danger';
+          } else if (incB.severity === 'warning' || incA.severity === 'warning') {
+            incA.severity = 'warning';
+          }
+
+          incA.reports_count = total;
+          incA.upvotes += incB.upvotes;
+          incA.downvotes += incB.downvotes;
+          incA.reliability_score = this.computeReliability(incA);
+          incA.updated_at = new Date().toISOString();
+
+          // Extension de validité
+          const expA = new Date(incA.expires_at).getTime();
+          const expB = new Date(incB.expires_at).getTime();
+          incA.expires_at = new Date(Math.max(expA, expB)).toISOString();
+
+          // Supprime l'incident absorbé incB
+          await this.deleteById(incB.id);
+          deletedIds.push(incB.id);
+          mergedCount++;
+
+          await this.saveIncident(incA);
+        }
+      }
+    }
+
+    if (mergedCount > 0) {
+      console.log(`✅ [Consolidation Périmètres] ${mergedCount} incidents redondants fusionnés.`);
+    }
+
+    return { mergedCount, deletedIds };
   }
 
   /**

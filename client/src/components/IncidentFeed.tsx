@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { Incident, Severity } from '../types';
+import { formatLocationName } from '../utils/landmarkHelper';
 
 export const IncidentFeed: React.FC = () => {
   const { 
@@ -209,7 +210,7 @@ export const IncidentFeed: React.FC = () => {
                 <div className="flex items-start space-x-2 mb-1.5">
                   <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                   <h4 className="text-xs font-semibold text-slate-200 leading-tight">
-                    {incident.location_name}
+                    {formatLocationName(incident.location_name, incident.lat, incident.lng)}
                   </h4>
                 </div>
 

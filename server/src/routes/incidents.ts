@@ -221,6 +221,18 @@ export const incidentRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
+   * POST /api/incidents/merge-overlapping
+   * Déclenche la fusion géométrique de tous les signalements dont les périmètres croisent à plus de 50%
+   */
+  fastify.post('/api/incidents/merge-overlapping', async (request, reply) => {
+    const { mergedCount, deletedIds } = await incidentRepository.mergeAllOverlappingIncidents(0.50);
+    deletedIds.forEach((id) => broadcastIncidentExpired(id));
+    const all = await incidentRepository.getAll({});
+    all.forEach((inc) => broadcastIncidentUpdated(inc));
+    return reply.send({ success: true, mergedCount, deletedIds, remainingCount: all.length });
+  });
+
+  /**
    * POST /api/incidents/clear-all
    * Remise à zéro complète de la carte
    */

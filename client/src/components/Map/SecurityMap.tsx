@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { PARIS_TRANSPORT_HUBS } from '../../data/ratpHubs';
 import { useIncidentStore } from '../../store/useIncidentStore';
 import { Incident } from '../../types';
+import { formatLocationName } from '../../utils/landmarkHelper';
 import { 
   AlertCircle, 
   AlertTriangle, 
@@ -246,7 +247,7 @@ export const SecurityMap: React.FC = () => {
                 </div>
 
                 <h4 className="font-semibold text-xs text-white leading-tight mb-1.5">
-                  {incident.location_name}
+                  {formatLocationName(incident.location_name, incident.lat, incident.lng)}
                 </h4>
 
                 <p className="text-xs text-slate-300 leading-snug line-clamp-3 mb-2.5 overflow-hidden text-ellipsis break-words">

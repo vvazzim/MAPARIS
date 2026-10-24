@@ -26,8 +26,8 @@ async function bootstrap() {
     // Active la surveillance gratuite des canaux publics Telegram (toutes les 5 min)
     telegramScraperService.startPolling(5);
 
-    // Active la synchronisation automatisée MediaManif (toutes les 60 min / 1h)
-    mediaManifService.startPolling(60);
+    // Active la synchronisation automatisée MediaManif (par défaut toutes les 60 min / 1h, configurable)
+    mediaManifService.startPolling(env.MEDIAMANIF_POLL_INTERVAL_MIN);
 
     console.log(`
 =====================================================

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   X, 
   ShieldAlert, 
   PlusCircle, 
   Compass, 
   Train, 
-  Radio, 
   Navigation, 
   Layers, 
   CheckCircle, 
@@ -16,7 +15,8 @@ import {
   Loader2,
   Lock,
   List,
-  Globe
+  Globe,
+  ChevronRight
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
@@ -37,11 +37,9 @@ export const MobileDrawer: React.FC = () => {
     flyTo,
     setMobileActiveTab,
     language,
-    toggleLanguage,
+    setLanguage,
     t,
   } = useIncidentStore();
-
-  const [simulating, setSimulating] = useState(false);
 
   if (!isMobileMenuOpen) return null;
 
@@ -49,17 +47,6 @@ export const MobileDrawer: React.FC = () => {
   const warningCount = incidents.filter((i) => i.severity === 'warning').length;
   const safeCount = incidents.filter((i) => i.severity === 'safe').length;
   const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
-
-  const handleSimulateOSINT = async () => {
-    try {
-      setSimulating(true);
-      await fetch('/api/osint/simulate', { method: 'POST' });
-    } catch (err) {
-      console.error('Erreur simulation OSINT:', err);
-    } finally {
-      setTimeout(() => setSimulating(false), 800);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-[1000] lg:hidden">
@@ -87,7 +74,7 @@ export const MobileDrawer: React.FC = () => {
 
             <button 
               onClick={closeMobileMenu}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-dark-800 transition"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-dark-800 transition active:scale-95 cursor-pointer"
               title="Fermer"
             >
               <X className="w-5 h-5" />
@@ -97,30 +84,50 @@ export const MobileDrawer: React.FC = () => {
           {/* Content */}
           <div className="p-5 space-y-6 flex-1">
             
-            {/* Language Switcher Bar */}
+            {/* Language Switcher Bar (Explicit choice FR / EN) */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-dark-850 border border-dark-800">
-              <div className="flex items-center gap-2 text-xs text-slate-300">
+              <div className="flex items-center gap-2 text-xs text-slate-300 font-medium">
                 <Globe className="w-4 h-4 text-pulse-accent" />
-                <span>Langue / Language</span>
+                <span>{language === 'fr' ? 'Langue / Language' : 'Language / Langue'}</span>
               </div>
-              <button
-                onClick={toggleLanguage}
-                className="px-2.5 py-1 rounded-lg bg-dark-900 border border-dark-700 text-xs font-mono font-bold text-white hover:border-pulse-accent transition flex items-center gap-1.5"
-              >
-                <span>{language === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN'}</span>
-                <span className="text-[10px] text-slate-400 font-normal">
-                  ({language === 'fr' ? 'Passer en EN' : 'Switch to FR'})
-                </span>
-              </button>
+              <div className="flex items-center bg-dark-950 p-1 rounded-lg border border-dark-750">
+                <button
+                  type="button"
+                  onClick={() => setLanguage('fr')}
+                  className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition cursor-pointer ${
+                    language === 'fr'
+                      ? 'bg-pulse-accent text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  🇫🇷 FR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={`px-3 py-1 rounded-md text-xs font-mono font-bold transition cursor-pointer ${
+                    language === 'en'
+                      ? 'bg-pulse-accent text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  🇬🇧 EN
+                </button>
+              </div>
             </div>
 
-            {/* Live Metrics Cards */}
+            {/* Live Metrics Cards (Passive Telemetry - Non cliquables) */}
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
-                {t.mobile.liveSituation}
-              </span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                  {t.mobile.liveSituation}
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">
+                  {language === 'fr' ? 'Lecture seule' : 'Read-only'}
+                </span>
+              </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center">
+                <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center select-none cursor-default">
                   <div className="flex items-center justify-center text-red-500 mb-1">
                     <AlertCircle className="w-4 h-4" />
                   </div>
@@ -128,7 +135,7 @@ export const MobileDrawer: React.FC = () => {
                   <span className="text-[10px] text-red-300 font-medium">{t.mobile.dangers}</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center">
+                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center select-none cursor-default">
                   <div className="flex items-center justify-center text-amber-500 mb-1">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
@@ -136,7 +143,7 @@ export const MobileDrawer: React.FC = () => {
                   <span className="text-[10px] text-amber-300 font-medium">{t.mobile.warnings}</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center">
+                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center select-none cursor-default">
                   <div className="flex items-center justify-center text-emerald-500 mb-1">
                     <CheckCircle className="w-4 h-4" />
                   </div>
@@ -146,7 +153,7 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions (Clearly Cliquables with Chevrons and Hover/Active States) */}
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
                 {t.mobile.mainActions}
@@ -156,31 +163,31 @@ export const MobileDrawer: React.FC = () => {
                 {/* Signaler */}
                 <button
                   onClick={openReportModal}
-                  className="w-full p-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm flex items-center justify-between shadow-lg shadow-rose-950/50 transition active:scale-[0.98]"
+                  className="w-full p-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm flex items-center justify-between shadow-lg shadow-rose-950/50 transition active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <PlusCircle className="w-5 h-5 text-white" />
                     <div className="text-left">
-                      <div>{t.mobile.reportAction}</div>
-                      <div className="text-[10px] text-rose-200 font-normal">{t.mobile.reportDesc}</div>
+                      <div className="font-bold">{t.mobile.reportAction}</div>
+                      <div className="text-[10px] text-rose-100 font-normal">{t.mobile.reportDesc}</div>
                     </div>
                   </div>
-                  <span className="text-xs bg-rose-700 px-2 py-0.5 rounded font-mono">POST</span>
+                  <ChevronRight className="w-4 h-4 text-rose-200" />
                 </button>
 
                 {/* Itinéraire Safe */}
                 <button
                   onClick={openSafeRouteModal}
-                  className="w-full p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98]"
+                  className="w-full p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <Compass className="w-5 h-5 text-emerald-400" />
                     <div className="text-left">
-                      <div>{t.mobile.safeRouteAction}</div>
+                      <div className="font-bold text-white">{t.mobile.safeRouteAction}</div>
                       <div className="text-[10px] text-emerald-300/80 font-normal">{t.mobile.safeRouteDesc}</div>
                     </div>
                   </div>
-                  <span className="text-xs bg-emerald-900/80 text-emerald-300 px-2 py-0.5 rounded font-mono">MAP</span>
+                  <ChevronRight className="w-4 h-4 text-emerald-400" />
                 </button>
 
                 {/* Transports RATP */}
@@ -189,24 +196,27 @@ export const MobileDrawer: React.FC = () => {
                     closeMobileMenu();
                     toggleTransportWidget();
                   }}
-                  className="w-full p-3 rounded-xl bg-indigo-950/70 border border-indigo-500/40 hover:bg-indigo-900/60 text-indigo-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98]"
+                  className="w-full p-3.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 hover:bg-indigo-900/60 text-indigo-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <Train className="w-5 h-5 text-indigo-400" />
                     <div className="text-left">
-                      <div>{t.mobile.ratpAction}</div>
+                      <div className="font-bold text-white">{t.mobile.ratpAction}</div>
                       <div className="text-[10px] text-indigo-300/80 font-normal">{t.mobile.ratpDesc}</div>
                     </div>
                   </div>
-                  {disruptedStations > 0 ? (
-                    <span className="text-xs bg-rose-600 text-white font-mono font-bold px-2 py-0.5 rounded-full">
-                      {disruptedStations}
-                    </span>
-                  ) : (
-                    <span className="text-xs bg-emerald-900 text-emerald-300 font-mono px-2 py-0.5 rounded">
-                      {t.transport.normal}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {disruptedStations > 0 ? (
+                      <span className="text-xs bg-rose-600 text-white font-mono font-bold px-2 py-0.5 rounded-full">
+                        {disruptedStations}
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-emerald-900 text-emerald-300 font-mono px-2 py-0.5 rounded">
+                        {t.transport.normal}
+                      </span>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-indigo-400" />
+                  </div>
                 </button>
 
                 {/* Afficher Flux complet */}
@@ -215,38 +225,21 @@ export const MobileDrawer: React.FC = () => {
                     setMobileActiveTab('feed');
                     closeMobileMenu();
                   }}
-                  className="w-full p-3 rounded-xl bg-dark-800 hover:bg-dark-700 text-slate-200 font-semibold text-sm flex items-center justify-between transition"
+                  className="w-full p-3.5 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <List className="w-5 h-5 text-pulse-accent" />
                     <div className="text-left">
-                      <div>{t.mobile.viewAlertsAction}</div>
+                      <div className="font-bold text-white">{t.mobile.viewAlertsAction}</div>
                       <div className="text-[10px] text-slate-400 font-normal">{t.mobile.viewAlertsDesc}</div>
                     </div>
                   </div>
-                  <span className="text-xs bg-dark-700 text-slate-300 px-2 py-0.5 rounded font-mono">
-                    {incidents.length}
-                  </span>
-                </button>
-
-                {/* Simuler OSINT */}
-                <button
-                  onClick={handleSimulateOSINT}
-                  disabled={simulating}
-                  className="w-full p-3 rounded-xl bg-purple-950/60 border border-purple-500/30 hover:bg-purple-900/50 text-purple-200 font-semibold text-sm flex items-center justify-between transition disabled:opacity-50"
-                >
-                  <div className="flex items-center gap-3">
-                    {simulating ? (
-                      <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-                    ) : (
-                      <Radio className="w-5 h-5 text-purple-400 animate-pulse" />
-                    )}
-                    <div className="text-left">
-                      <div>{t.mobile.simulateOsintAction}</div>
-                      <div className="text-[10px] text-purple-300/80 font-normal">{t.mobile.simulateOsintDesc}</div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-dark-700 text-slate-300 px-2 py-0.5 rounded font-mono">
+                      {incidents.length}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
-                  <span className="text-xs bg-purple-900 text-purple-300 px-2 py-0.5 rounded font-mono">BOT</span>
                 </button>
               </div>
             </div>
@@ -259,32 +252,36 @@ export const MobileDrawer: React.FC = () => {
               <div className="space-y-2">
                 <button
                   onClick={toggleDangerRadius}
-                  className={`w-full p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition ${
+                  className={`w-full p-3 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
                     showDangerRadius 
                       ? 'bg-rose-950/40 border-rose-500/40 text-rose-300' 
-                      : 'bg-dark-800/80 border-dark-700 text-slate-400'
+                      : 'bg-dark-800/80 border-dark-700 text-slate-400 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4" />
                     <span>{t.mobile.dangerCircles}</span>
                   </div>
-                  <span className="font-mono">{showDangerRadius ? t.mobile.enabled : t.mobile.disabled}</span>
+                  <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${showDangerRadius ? 'bg-rose-900/60 text-rose-300' : 'bg-dark-700 text-slate-400'}`}>
+                    {showDangerRadius ? t.mobile.enabled : t.mobile.disabled}
+                  </span>
                 </button>
 
                 <button
                   onClick={toggleTransports}
-                  className={`w-full p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition ${
+                  className={`w-full p-3 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
                     showTransports 
                       ? 'bg-indigo-950/40 border-indigo-500/40 text-indigo-300' 
-                      : 'bg-dark-800/80 border-dark-700 text-slate-400'
+                      : 'bg-dark-800/80 border-dark-700 text-slate-400 hover:text-white'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <Train className="w-4 h-4" />
                     <span>{t.mobile.ratpMarkers}</span>
                   </div>
-                  <span className="font-mono">{showTransports ? t.mobile.enabled : t.mobile.disabled}</span>
+                  <span className={`px-2 py-0.5 rounded font-mono text-[10px] ${showTransports ? 'bg-indigo-900/60 text-indigo-300' : 'bg-dark-700 text-slate-400'}`}>
+                    {showTransports ? t.mobile.enabled : t.mobile.disabled}
+                  </span>
                 </button>
 
                 <button
@@ -292,7 +289,7 @@ export const MobileDrawer: React.FC = () => {
                     closeMobileMenu();
                     flyTo(48.8566, 2.3522, 13);
                   }}
-                  className="w-full p-2.5 rounded-xl bg-dark-800/80 border border-dark-700 hover:bg-dark-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-2 transition"
+                  className="w-full p-3 rounded-xl bg-dark-800/80 border border-dark-700 hover:bg-dark-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99]"
                 >
                   <Navigation className="w-4 h-4 text-pulse-accent" />
                   <span>{t.mobile.recenterParis}</span>
@@ -304,12 +301,12 @@ export const MobileDrawer: React.FC = () => {
           {/* Footer Anonymat & Statut */}
           <div className="p-4 border-t border-dark-800 bg-dark-950/80 space-y-2">
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-400 flex items-center gap-1.5">
+              <span className="text-slate-400 flex items-center gap-1.5 select-none">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{t.mobile.anonymous}</span>
               </span>
 
-              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
+              <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full select-none cursor-default ${
                 connectionStatus === 'connected' 
                   ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' 
                   : connectionStatus === 'reconnecting'

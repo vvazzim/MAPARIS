@@ -1,5 +1,6 @@
 import { incidentRepository } from '../repositories/incidentRepository.js';
 import { geocodingService } from './geocodingService.js';
+import { getReadableLocation } from './landmarkService.js';
 import { broadcastNewIncident, broadcastIncidentUpdated } from '../sockets/socketHandler.js';
 import { Severity, IncidentCategory, Incident } from '../types/index.js';
 
@@ -170,12 +171,13 @@ export class MediaManifService {
         // 3. Mapping de classification
         const mapping = this.mapMediaManifCategory(pt.what);
 
-        // 4. Reverse-geocoding via BAN pour obtenir le nom de rue précis
-        let addressName = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        // 4. Reverse-geocoding via BAN ou association automatique au repère parisien le plus proche
+        let addressName = getReadableLocation(lat, lng);
         try {
-          addressName = await geocodingService.reverseGeocode(lat, lng);
+          const banAddress = await geocodingService.reverseGeocode(lat, lng);
+          addressName = getReadableLocation(lat, lng, banAddress);
         } catch {
-          addressName = `Secteur Paris (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+          addressName = getReadableLocation(lat, lng);
         }
 
         // 5. Ingestion avec notre logique de clustering à 50m et TTL dynamique 1h
@@ -200,6 +202,12 @@ export class MediaManifService {
         }
 
         this.processedIds.add(pt.id);
+      }
+
+      // Fusion consolidée de tous les périmètres qui se croisent à plus de 50%
+      const { mergedCount } = await incidentRepository.mergeAllOverlappingIncidents(0.50);
+      if (mergedCount > 0) {
+        clusteredMerged += mergedCount;
       }
 
       console.log(`✅ [MediaManif] Sync réussie : ${rawPoints.length} points bruts, ${parisCount} à Paris, ${newCreated} créés, ${clusteredMerged} fusionnés.`);

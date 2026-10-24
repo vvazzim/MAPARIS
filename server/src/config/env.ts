@@ -13,6 +13,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().optional().default(''),
   SUPABASE_KEY: z.string().optional().default(''),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(''),
+  MEDIAMANIF_POLL_INTERVAL_MIN: z.string().default('60').transform((val) => parseInt(val, 10)),
 });
 
 export const env = envSchema.parse(process.env);

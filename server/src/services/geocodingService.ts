@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import { GeocodeResult } from '../types/index.js';
+import { getReadableLocation } from './landmarkService.js';
 
 interface BANFeature {
   type: string;
@@ -165,15 +166,15 @@ export class GeocodingService {
         signal: AbortSignal.timeout(4000),
       });
 
-      if (!response.ok) return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      if (!response.ok) return getReadableLocation(lat, lng);
 
       const data = (await response.json()) as BANResponse;
       if (data.features && data.features.length > 0) {
         return data.features[0].properties.label;
       }
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      return getReadableLocation(lat, lng);
     } catch {
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      return getReadableLocation(lat, lng);
     }
   }
 }
