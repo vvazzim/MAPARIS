@@ -41,8 +41,8 @@ export class GeocodingService {
   }
 
   /**
-   * Géocode une adresse ou un lieu à Paris en coordonnées GPS (lat, lng)
-   * Utilise l'API Base Adresse Nationale (BAN) avec priorité géographique sur Paris.
+   * Géocode une adresse ou un lieu en Île-de-France (Paris, 92, 93, 94, etc.) en coordonnées GPS (lat, lng)
+   * Utilise l'API Base Adresse Nationale (BAN) avec priorité géographique sur toute la région IDF.
    */
   async geocodeAddress(query: string): Promise<GeocodeResult> {
     const trimmed = query.trim();
@@ -50,10 +50,11 @@ export class GeocodingService {
       throw new Error("L'adresse fournie pour le géocodage est vide.");
     }
 
-    // Si la recherche ne mentionne pas explicitement Paris ou 75, on aide l'API BAN
-    const searchTarget = /paris|75\d{3}/i.test(trimmed) ? trimmed : `${trimmed}, Paris`;
+    // Détecte si la recherche mentionne déjà Paris, un département IDF (75, 77, 78, 91, 92, 93, 94, 95) ou une commune
+    const hasIdfContext = /(?:paris|75\d{3}|92\d{3}|93\d{3}|94\d{3}|77\d{3}|78\d{3}|91\d{3}|95\d{3}|île-de-france|idf|seine|hauts-de-seine|val-de-marne|yvelines|essonne)/i.test(trimmed);
+    const searchTarget = hasIdfContext ? trimmed : `${trimmed}, Île-de-France`;
 
-    // lat=48.8566 & lon=2.3522 donne une priorité géographique au centre de Paris
+    // lat=48.8566 & lon=2.3522 donne une priorité géographique au centre de l'agglomération parisienne et IDF
     const url = new URL(`${this.baseUrl}/search/`);
     url.searchParams.append('q', searchTarget);
     url.searchParams.append('limit', '5');

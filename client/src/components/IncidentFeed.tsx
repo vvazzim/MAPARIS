@@ -10,16 +10,14 @@ import {
   ThumbsDown, 
   PlusCircle, 
   Search, 
-  ShieldCheck,
-  ShieldAlert,
-  Flame,
-  Flag,
-  Train,
-  Map as MapIcon
+  ShieldCheck, 
+  ShieldAlert, 
+  Map as MapIcon 
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { Incident, Severity } from '../types';
 import { formatLocationName } from '../utils/landmarkHelper';
+import { formatIncidentDetails } from '../utils/incidentFormatter';
 
 export const IncidentFeed: React.FC = () => {
   const { 
@@ -30,6 +28,7 @@ export const IncidentFeed: React.FC = () => {
     voteIncident,
     mobileActiveTab,
     setMobileActiveTab,
+    language,
     t,
   } = useIncidentStore();
 
@@ -74,17 +73,6 @@ export const IncidentFeed: React.FC = () => {
             <span>{t.feed.filterSafe}</span>
           </span>
         );
-    }
-  };
-
-  const getCategoryIcon = (category?: string) => {
-    switch (category) {
-      case 'manifestation': return <Flag className="w-3 h-3 text-purple-400" />;
-      case 'degradation': return <Flame className="w-3 h-3 text-rose-400" />;
-      case 'fermeture_station': return <Train className="w-3 h-3 text-indigo-400" />;
-      case 'tension': return <AlertTriangle className="w-3 h-3 text-amber-400" />;
-      case 'calme': return <CheckCircle className="w-3 h-3 text-emerald-400" />;
-      default: return <MapPin className="w-3 h-3 text-slate-400" />;
     }
   };
 
@@ -173,6 +161,7 @@ export const IncidentFeed: React.FC = () => {
             const isSelected = selectedIncident?.id === incident.id;
             const reliability = incident.reliability_score ?? 0.5;
             const percent = Math.round(reliability * 100);
+            const details = formatIncidentDetails(incident, language);
 
             return (
               <div
@@ -193,16 +182,14 @@ export const IncidentFeed: React.FC = () => {
                         <span>×{incident.reports_count}</span>
                       </span>
                     )}
-                    {incident.category && (
-                      <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] bg-dark-950 text-slate-300 font-mono">
-                        {getCategoryIcon(incident.category)}
-                        <span className="capitalize">{incident.category}</span>
-                      </span>
-                    )}
+                    <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] bg-dark-950 text-slate-300 font-mono">
+                      <span>{details.emoji}</span>
+                      <span>{details.categoryLabel}</span>
+                    </span>
                   </div>
                   <div className="flex items-center text-[10px] text-slate-400 font-mono space-x-1">
                     <Clock className="w-3 h-3" />
-                    <span>{new Date(incident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>{details.timeAgo}</span>
                   </div>
                 </div>
 
@@ -216,7 +203,7 @@ export const IncidentFeed: React.FC = () => {
 
                 {/* Description */}
                 <p className="text-xs text-slate-300 leading-snug line-clamp-2 mb-3">
-                  {incident.description}
+                  {details.cleanDescription}
                 </p>
 
                 {/* Reliability Progress Gauge */}
@@ -244,8 +231,8 @@ export const IncidentFeed: React.FC = () => {
 
                 {/* Actions & Attribution */}
                 <div className="flex items-center justify-between text-[11px] pt-1 border-t border-dark-800 text-slate-400">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400 truncate max-w-[150px]" title={incident.source}>
-                    {incident.source}
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400 truncate max-w-[150px]" title={details.sourceBadge}>
+                    {details.sourceBadge}
                   </span>
 
                   {/* Upvote & Downvote buttons */}

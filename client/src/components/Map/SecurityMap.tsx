@@ -5,10 +5,8 @@ import { PARIS_TRANSPORT_HUBS } from '../../data/ratpHubs';
 import { useIncidentStore } from '../../store/useIncidentStore';
 import { Incident } from '../../types';
 import { formatLocationName } from '../../utils/landmarkHelper';
+import { formatIncidentDetails } from '../../utils/incidentFormatter';
 import { 
-  AlertCircle, 
-  AlertTriangle, 
-  CheckCircle, 
   ThumbsUp, 
   ThumbsDown, 
   Train, 
@@ -16,10 +14,9 @@ import {
   Layers, 
   Shield, 
   ShieldCheck, 
-  Clock,
-  Users,
-  X,
-  SlidersHorizontal,
+  Users, 
+  X, 
+  SlidersHorizontal 
 } from 'lucide-react';
 
 // Custom Map Controller to smoothly pan/zoom and resize
@@ -184,8 +181,13 @@ export const SecurityMap: React.FC = () => {
     voteIncident,
     activeSafeRoute,
     clearSafeRoute,
+    isSafeRouteModalOpen,
+    isReportModalOpen,
+    language,
     t,
   } = useIncidentStore();
+
+  const isAnyModalOpen = isSafeRouteModalOpen || isReportModalOpen;
 
   return (
     <div className="relative w-full h-full min-h-[400px] overflow-hidden select-none bg-slate-100">
@@ -228,115 +230,113 @@ export const SecurityMap: React.FC = () => {
           })}
 
         {/* Incident Markers */}
-        {incidents.map((incident) => (
-          <Marker
-            key={incident.id}
-            position={[incident.lat, incident.lng]}
-            icon={createIncidentIcon(incident.severity, incident.reports_count)}
-            eventHandlers={{
-              click: () => setSelectedIncident(incident),
-            }}
-          >
-            <Popup className="pulse-popup">
-              <div className="p-1 min-w-[240px] max-w-[280px] sm:max-w-[320px] text-slate-100">
-                <div className="flex items-center justify-between pb-2 border-b border-dark-700/80 mb-2">
-                  <div className="flex items-center space-x-1.5">
-                    {incident.severity === 'danger' && <AlertCircle className="w-4 h-4 text-rose-500" />}
-                    {incident.severity === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
-                    {incident.severity === 'safe' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
-                    <span className="text-xs uppercase font-bold tracking-wider font-mono">
-                      {incident.severity === 'danger' ? t.map.highDanger : incident.severity === 'warning' ? t.map.tension : t.map.safeZone}
+        {incidents.map((incident) => {
+          const details = formatIncidentDetails(incident, language);
+          return (
+            <Marker
+              key={incident.id}
+              position={[incident.lat, incident.lng]}
+              icon={createIncidentIcon(incident.severity, incident.reports_count)}
+              eventHandlers={{
+                click: () => setSelectedIncident(incident),
+              }}
+            >
+              <Popup className="pulse-popup">
+                <div className="p-1 min-w-[240px] max-w-[280px] sm:max-w-[320px] text-slate-100">
+                  <div className="flex items-center justify-between pb-2 border-b border-dark-700/80 mb-2">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-base select-none leading-none">{details.emoji}</span>
+                      <span className={`text-[10px] uppercase font-bold tracking-wider font-mono px-2 py-0.5 rounded-full ${details.severityBadgeClass}`}>
+                        {details.cleanTitle}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {details.timeAgo}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    {new Date(incident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
 
-                {/* Cluster & TTL Info Bar */}
-                <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-dark-900/90 px-2 py-1 rounded border border-dark-700/80 mb-2">
-                  <span className="flex items-center gap-1 font-semibold text-amber-300">
-                    <Users className="w-3 h-3 text-amber-400" />
-                    <span>{incident.reports_count && incident.reports_count > 1 ? t.map.confirmedBadge.replace('{count}', String(incident.reports_count)) : t.map.oneSignal}</span>
-                  </span>
-                  {incident.expires_at && (
-                    <span className="flex items-center gap-1 text-slate-400" title={`${t.map.expiresAt} ${new Date(incident.expires_at).toLocaleTimeString()}`}>
-                      <Clock className="w-3 h-3 text-cyan-400" />
-                      <span>{new Date(incident.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {/* Cluster & TTL Info Bar */}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-dark-900/90 px-2 py-1 rounded border border-dark-700/80 mb-2">
+                    <span className="flex items-center gap-1 font-semibold text-amber-300">
+                      <Users className="w-3 h-3 text-amber-400" />
+                      <span>{incident.reports_count && incident.reports_count > 1 ? t.map.confirmedBadge.replace('{count}', String(incident.reports_count)) : t.map.oneSignal}</span>
                     </span>
-                  )}
-                </div>
-
-                <h4 className="font-semibold text-xs text-white leading-tight mb-1.5">
-                  {formatLocationName(incident.location_name, incident.lat, incident.lng)}
-                </h4>
-
-                <p className="text-xs text-slate-300 leading-snug line-clamp-3 mb-2.5 overflow-hidden text-ellipsis break-words">
-                  {incident.description}
-                </p>
-
-                {/* Reliability gauge in popup */}
-                <div className="mb-2.5 bg-dark-900/80 p-2 rounded-lg border border-dark-700">
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-                    <span className="flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                      <span>{t.map.reliability}</span>
-                    </span>
-                    <span className="font-bold text-slate-200">
-                      {Math.round((incident.reliability_score ?? 0.5) * 100)}%
+                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-dark-950 text-slate-300 font-mono">
+                      {details.categoryLabel}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-dark-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        (incident.reliability_score ?? 0.5) >= 0.8
-                          ? 'bg-emerald-500'
-                          : (incident.reliability_score ?? 0.5) >= 0.6
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500'
-                      }`}
-                      style={{ width: `${Math.round((incident.reliability_score ?? 0.5) * 100)}%` }}
-                    />
+
+                  <h4 className="font-semibold text-xs text-white leading-tight mb-1.5">
+                    {formatLocationName(incident.location_name, incident.lat, incident.lng)}
+                  </h4>
+
+                  <p className="text-xs text-slate-300 leading-snug line-clamp-3 mb-2.5 overflow-hidden text-ellipsis break-words">
+                    {details.cleanDescription}
+                  </p>
+
+                  {/* Reliability gauge in popup */}
+                  <div className="mb-2.5 bg-dark-900/80 p-2 rounded-lg border border-dark-700">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
+                      <span className="flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        <span>{t.map.reliability}</span>
+                      </span>
+                      <span className="font-bold text-slate-200">
+                        {Math.round((incident.reliability_score ?? 0.5) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-dark-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          (incident.reliability_score ?? 0.5) >= 0.8
+                            ? 'bg-emerald-500'
+                            : (incident.reliability_score ?? 0.5) >= 0.6
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${Math.round((incident.reliability_score ?? 0.5) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-dark-700 text-[11px] text-slate-400">
+                    <span className="text-[10px] font-mono text-slate-400 truncate max-w-[130px]" title={details.sourceBadge}>
+                      {details.sourceBadge}
+                    </span>
+                    
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          voteIncident(incident.id, 'up');
+                        }}
+                        className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-200 transition text-xs"
+                        title={t.map.voteUpTitle}
+                      >
+                        <ThumbsUp className="w-3 h-3 text-emerald-400" />
+                        <span className="font-mono font-bold text-[10px]">{incident.upvotes}</span>
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          voteIncident(incident.id, 'down');
+                        }}
+                        className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition text-xs"
+                        title={t.map.voteDownTitle}
+                      >
+                        <ThumbsDown className="w-3 h-3 text-rose-400" />
+                        {incident.downvotes !== undefined && incident.downvotes > 0 && (
+                          <span className="font-mono text-[10px]">{incident.downvotes}</span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-dark-700 text-[11px] text-slate-400">
-                  <span className="text-[10px] font-mono text-slate-400 truncate max-w-[110px]" title={incident.source}>
-                    {incident.source}
-                  </span>
-                  
-                  <div className="flex items-center space-x-1.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        voteIncident(incident.id, 'up');
-                      }}
-                      className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-200 transition text-xs"
-                      title={t.map.voteUpTitle}
-                    >
-                      <ThumbsUp className="w-3 h-3 text-emerald-400" />
-                      <span className="font-mono font-bold text-[10px]">{incident.upvotes}</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        voteIncident(incident.id, 'down');
-                      }}
-                      className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition text-xs"
-                      title={t.map.voteDownTitle}
-                    >
-                      <ThumbsDown className="w-3 h-3 text-rose-400" />
-                      {incident.downvotes !== undefined && incident.downvotes > 0 && (
-                        <span className="font-mono text-[10px]">{incident.downvotes}</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+              </Popup>
+            </Marker>
+          );
+        })}
 
         {/* Transport Station Markers */}
         {showTransports &&
@@ -458,7 +458,9 @@ export const SecurityMap: React.FC = () => {
 
       {/* Floating Active Route Banner (Top Center) */}
       {activeSafeRoute && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-dark-900/95 border border-dark-700 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-xs">
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-dark-900/95 border border-dark-700 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-xs transition-opacity duration-200 ${
+          isAnyModalOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}>
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -501,8 +503,10 @@ export const SecurityMap: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Map Action Controls (Top Right) - Retractable on Mobile */}
-      <div className="absolute top-4 right-3 sm:right-4 z-[400] flex flex-col items-end gap-2">
+      {/* Floating Map Action Controls (Top Right) - Retractable on Mobile & Hidden when Modal is Open */}
+      <div className={`absolute top-4 right-3 sm:right-4 z-[400] flex flex-col items-end gap-2 transition-opacity duration-200 ${
+        isAnyModalOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      }`}>
         {/* Mobile Toggle Button (< md) */}
         <button
           onClick={() => setIsControlsOpen((prev: boolean) => !prev)}
@@ -566,8 +570,10 @@ export const SecurityMap: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Map Legend (Bottom Left) - Hidden on Mobile (< sm) */}
-      <div className="hidden sm:flex absolute bottom-6 left-6 z-[400] bg-dark-900/90 border border-dark-800 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl text-[11px] text-slate-300 items-center gap-4">
+      {/* Floating Map Legend (Bottom Left) - Hidden on Mobile (< sm) and when Modal is Open */}
+      <div className={`hidden sm:flex absolute bottom-6 left-6 z-[400] bg-dark-900/90 border border-dark-800 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl text-[11px] text-slate-300 items-center gap-4 transition-opacity duration-200 ${
+        isAnyModalOpen ? '!hidden' : ''
+      }`}>
         <div className="flex items-center gap-1.5 font-medium">
           <Shield className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-400 font-mono text-[10px] uppercase">{t.map.legend}</span>

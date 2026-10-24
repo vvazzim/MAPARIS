@@ -35,12 +35,12 @@ export class MediaManifService {
   private lastResult: MediaManifSyncResult | null = null;
   private processedIds: Set<string> = new Set();
 
-  // Bounding box élargie couvrant Paris intramuros et proche couronne
+  // Bounding box couvrant toute la région Île-de-France (Paris + 92 + 93 + 94 + 78 + 91 + 95 + 77)
   private readonly bbox = {
-    x1: 2.22,  // Ouest
-    y1: 48.92, // Nord
-    x2: 2.48,  // Est
-    y2: 48.80, // Sud
+    x1: 1.44,  // Ouest (Yvelines / Mantes / Houdan)
+    y1: 49.25, // Nord (Val-d'Oise / Roissy / Persan)
+    x2: 3.56,  // Est (Seine-et-Marne / Meaux / Provins)
+    y2: 48.12, // Sud (Essonne / Fontainebleau / Nemours)
   };
 
   constructor() {
@@ -51,7 +51,7 @@ export class MediaManifService {
    * Récupère les points en direct depuis l'endpoint JSON de MediaManif
    */
   async fetchPoints(): Promise<RawMediaManifPoint[]> {
-    const url = `https://mediamanif.org/getter.php?what=points&zoom=13&x1=${this.bbox.x1}&y1=${this.bbox.y1}&x2=${this.bbox.x2}&y2=${this.bbox.y2}&showgreve=1`;
+    const url = `https://mediamanif.org/getter.php?what=points&zoom=10&x1=${this.bbox.x1}&y1=${this.bbox.y1}&x2=${this.bbox.x2}&y2=${this.bbox.y2}&showgreve=1`;
 
     const response = await fetch(url, {
       headers: {
@@ -77,7 +77,7 @@ export class MediaManifService {
   }
 
   /**
-   * Détermine la sévérité, catégorie et description textuelle selon le code `what` de MediaManif
+   * Détermine la sévérité (Rouge / Jaune / Vert), catégorie et émoji selon le code `what` de MediaManif
    */
   private mapMediaManifCategory(what: string): {
     severity: Severity;
@@ -85,44 +85,44 @@ export class MediaManifService {
     description: string;
   } {
     switch (what) {
-      case '7': // Danger
+      case '7': // Danger / Dégradations / Affrontement (Rouge)
+        return {
+          severity: 'danger',
+          category: 'degradation',
+          description: '🔥 [Danger] Affrontements ou dégradations signalés en direct via MediaManif.',
+        };
+      case '11': // Lacrymogènes (Rouge)
         return {
           severity: 'danger',
           category: 'tension',
-          description: '[Danger] Zone à risque signalée en direct via MediaManif.',
+          description: '💨 [Lacrymo] Usage de gaz lacrymogènes signalé via MediaManif.',
         };
-      case '11': // Lacrymogènes
-        return {
-          severity: 'danger',
-          category: 'tension',
-          description: '[Lacrymo] Usage de gaz lacrymogènes signalé via MediaManif.',
-        };
-      case '13': // Forces de l'ordre
+      case '13': // Forces de l'ordre / Police / CRS (Jaune/Orange)
         return {
           severity: 'warning',
           category: 'tension',
-          description: '[Police / CRS] Dispositif ou filtrage des forces de l\'ordre (MediaManif).',
+          description: '👮 [Police / CRS] Dispositif ou filtrage des forces de l\'ordre (MediaManif).',
         };
       case '8': // Manifestants < 100
       case '9': // Manifestants < 1000
-      case '10': // Manifestants > 1000
+      case '10': // Manifestants > 1000 (Jaune/Orange)
         return {
           severity: 'warning',
           category: 'manifestation',
-          description: '[Cortège] Déplacement de manifestants signalé via MediaManif.',
+          description: '📢 [Cortège] Déplacement de manifestants signalé via MediaManif.',
         };
       case '14':
-      case '15': // Lieu de rassemblement / Grève
+      case '15': // Lieu de rassemblement / Grève (Jaune/Orange)
         return {
           severity: 'warning',
           category: 'manifestation',
-          description: '[Mobilisation] Point de rassemblement citoyen signalé (MediaManif).',
+          description: '🪧 [Mobilisation] Point de rassemblement citoyen signalé (MediaManif).',
         };
       default:
         return {
           severity: 'warning',
           category: 'autre',
-          description: '[Vigilance] Événement de rue signalé en direct via MediaManif.',
+          description: '⚠️ [Vigilance] Événement de rue signalé en direct via MediaManif.',
         };
     }
   }
@@ -153,14 +153,14 @@ export class MediaManifService {
         const ageSec = parseInt(pt.age || '0', 10);
         const isOld = pt.old === '1' || pt.old === 1;
 
-        // 1. Filtrage géographique strict sur la zone de Paris
-        const isInsideParisArea =
+        // 1. Filtrage géographique sur l'ensemble de la région Île-de-France (Paris + couronne)
+        const isInsideIdfArea =
           lat >= this.bbox.y2 &&
           lat <= this.bbox.y1 &&
           lng >= this.bbox.x1 &&
           lng <= this.bbox.x2;
 
-        if (!isInsideParisArea) continue;
+        if (!isInsideIdfArea) continue;
         parisCount++;
 
         // 2. Filtre de fraîcheur : priorité aux points en direct (old=0) ou de moins de 2 heures

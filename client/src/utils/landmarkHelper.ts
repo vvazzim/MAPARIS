@@ -61,6 +61,30 @@ export const PARIS_LANDMARKS: ParisLandmark[] = [
   { name: 'Porte d\'Italie', category: 'porte', lat: 48.8194, lng: 2.3596, district: 'Paris 13e' },
   { name: 'Porte de Versailles', category: 'porte', lat: 48.8322, lng: 2.2876, district: 'Paris 15e' },
   { name: 'Porte de Pantin / Parc de la Villette', category: 'porte', lat: 48.8888, lng: 2.3931, district: 'Paris 19e' },
+
+  // Île-de-France (Petite & Grande Couronne)
+  { name: 'La Défense (Grande Arche)', category: 'place', lat: 48.8924, lng: 2.2361, district: 'Hauts-de-Seine (92)' },
+  { name: 'Nanterre - Préfecture', category: 'place', lat: 48.8997, lng: 2.2137, district: 'Hauts-de-Seine (92)' },
+  { name: 'Boulogne - Marcel Sembat', category: 'metro', lat: 48.8338, lng: 2.2415, district: 'Hauts-de-Seine (92)' },
+  { name: 'Issy - Val de Seine', category: 'metro', lat: 48.8242, lng: 2.2730, district: 'Hauts-de-Seine (92)' },
+  { name: 'Saint-Denis - Stade de France', category: 'place', lat: 48.9244, lng: 2.3601, district: 'Seine-Saint-Denis (93)' },
+  { name: 'Saint-Denis - Basilique', category: 'monument', lat: 48.9360, lng: 2.3590, district: 'Seine-Saint-Denis (93)' },
+  { name: 'Bobigny - Pablo Picasso (Préfecture)', category: 'place', lat: 48.9068, lng: 2.4497, district: 'Seine-Saint-Denis (93)' },
+  { name: 'Montreuil - Mairie', category: 'metro', lat: 48.8624, lng: 2.4418, district: 'Seine-Saint-Denis (93)' },
+  { name: 'Saint-Ouen - Mairie', category: 'metro', lat: 48.9110, lng: 2.3330, district: 'Seine-Saint-Denis (93)' },
+  { name: 'Pantin - Église', category: 'metro', lat: 48.8940, lng: 2.4080, district: 'Seine-Saint-Denis (93)' },
+  { name: 'Créteil - Préfecture', category: 'place', lat: 48.7890, lng: 2.4530, district: 'Val-de-Marne (94)' },
+  { name: 'Vincennes - Château', category: 'monument', lat: 48.8430, lng: 2.4380, district: 'Val-de-Marne (94)' },
+  { name: 'Ivry-sur-Seine - Mairie', category: 'metro', lat: 48.8120, lng: 2.3870, district: 'Val-de-Marne (94)' },
+  { name: 'Villejuif - Louis Aragon', category: 'metro', lat: 48.7870, lng: 2.3670, district: 'Val-de-Marne (94)' },
+  { name: 'Versailles - Château / Rive Gauche', category: 'monument', lat: 48.8014, lng: 2.1301, district: 'Yvelines (78)' },
+  { name: 'Saint-Germain-en-Laye', category: 'place', lat: 48.8990, lng: 2.0940, district: 'Yvelines (78)' },
+  { name: 'Cergy - Préfecture', category: 'place', lat: 49.0360, lng: 2.0790, district: 'Val-d\'Oise (95)' },
+  { name: 'Argenteuil', category: 'place', lat: 48.9480, lng: 2.2470, district: 'Val-d\'Oise (95)' },
+  { name: 'Évry-Courcouronnes', category: 'place', lat: 48.6240, lng: 2.4280, district: 'Essonne (91)' },
+  { name: 'Massy - Palaiseau', category: 'gare', lat: 48.7250, lng: 2.2610, district: 'Essonne (91)' },
+  { name: 'Meaux', category: 'place', lat: 48.9600, lng: 2.8800, district: 'Seine-et-Marne (77)' },
+  { name: 'Melun', category: 'place', lat: 48.5400, lng: 2.6600, district: 'Seine-et-Marne (77)' },
 ];
 
 export function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {

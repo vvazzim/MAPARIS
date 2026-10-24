@@ -118,11 +118,18 @@ export const SafeRouteModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+      {/* Backdrop overlay assombri */}
       <div 
-        className="relative w-full max-w-xl bg-dark-900 border-t sm:border border-dark-800 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] sm:max-h-[90dvh]"
+        className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity cursor-pointer"
+        onClick={closeSafeRouteModal}
+        aria-hidden="true"
+      />
+
+      <div 
+        className="relative w-full max-w-xl bg-dark-900 border border-dark-750 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200"
         style={{
-          maxHeight: 'min(96dvh, 100dvh)',
+          maxHeight: 'min(92dvh, 780px)',
         }}
       >
         {/* Header */}
