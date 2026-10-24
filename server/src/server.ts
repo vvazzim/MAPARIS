@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { setupSocketIO } from './sockets/socketHandler.js';
+import { telegramScraperService } from './services/telegramScraperService.js';
 
 async function bootstrap() {
   try {
@@ -20,6 +21,9 @@ async function bootstrap() {
 
     // Start Fastify server
     await app.listen({ port: env.PORT, host: env.HOST });
+
+    // Active la surveillance gratuite des canaux publics Telegram (toutes les 5 min)
+    telegramScraperService.startPolling(5);
 
     console.log(`
 =====================================================

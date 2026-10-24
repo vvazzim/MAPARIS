@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { osintIngestionService } from '../services/osintIngestionService.js';
+import { telegramScraperService } from '../services/telegramScraperService.js';
 
 const parseTextSchema = z.object({
   text: z.string().min(5, 'Le message brut doit contenir au moins 5 caractères'),
@@ -19,6 +20,48 @@ export const osintRoutes: FastifyPluginAsync = async (fastify) => {
       success: true,
       message: 'Alerte OSINT simulée et diffusée avec succès',
       data: result,
+    };
+  });
+
+  /**
+   * POST /api/osint/telegram/sync
+   * Lance une synchronisation en direct des canaux Telegram publics (100% gratuit)
+   */
+  fastify.post('/api/osint/telegram/sync', async () => {
+    const syncResult = await telegramScraperService.syncNow();
+    return {
+      success: true,
+      message: `Synchronisation Telegram terminée : ${syncResult.newIngested.length} alerte(s) réelle(s) détectée(s) et géocodée(s).`,
+      checkedPosts: syncResult.checkedPosts,
+      newIngested: syncResult.newIngested,
+    };
+  });
+
+  /**
+   * GET /api/osint/telegram/status
+   * Statut de la surveillance Telegram publique
+   */
+  fastify.get('/api/osint/telegram/status', async () => {
+    return {
+      success: true,
+      status: telegramScraperService.getStatus(),
+    };
+  });
+
+  /**
+   * POST /api/osint/telegram/toggle
+   * Active / Désactive la surveillance périodique en tâche de fond (toutes les 3 min)
+   */
+  fastify.post('/api/osint/telegram/toggle', async () => {
+    const status = telegramScraperService.getStatus();
+    if (status.active) {
+      telegramScraperService.stopPolling();
+    } else {
+      telegramScraperService.startPolling(3);
+    }
+    return {
+      success: true,
+      active: !status.active,
     };
   });
 
