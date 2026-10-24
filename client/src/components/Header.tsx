@@ -11,7 +11,8 @@ import {
   Compass, 
   Loader2,
   Menu,
-  X
+  X,
+  Github
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
@@ -163,6 +164,18 @@ export const Header: React.FC = () => {
             </>
           )}
         </div>
+
+        {/* GitHub Repository & Creator Link */}
+        <a
+          href="https://github.com/vvazzim/MAPARIS"
+          target="_blank"
+          rel="noreferrer"
+          className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white border border-dark-700 text-xs font-mono transition"
+          title="Code source ouvert créé par VVAZZIM"
+        >
+          <Github className="w-3.5 h-3.5" />
+          <span>VVAZZIM</span>
+        </a>
 
         {/* Mobile Sandwich Menu Button */}
         <button

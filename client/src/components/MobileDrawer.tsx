@@ -313,6 +313,20 @@ export const MobileDrawer: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Author Credit */}
+            <div className="pt-2 border-t border-dark-800/80 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400 font-mono">Projet Open Source</span>
+              <a 
+                href="https://github.com/vvazzim/MAPARIS" 
+                target="_blank" 
+                rel="noreferrer"
+                className="hover:text-white transition flex items-center gap-1 text-slate-300 font-mono"
+              >
+                <span>créé par</span>
+                <span className="font-bold text-pulse-accent">@vvazzim</span>
+              </a>
+            </div>
           </div>
 
         </div>
