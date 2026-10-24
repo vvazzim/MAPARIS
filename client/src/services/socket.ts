@@ -27,7 +27,7 @@ export const initSocketListeners = (
   onStatusChange: (status: ConnectionStatus) => void
 ) => {
   socket.on('connect', () => {
-    console.log('[Socket.IO] Connecté au serveur Paris Security Pulse:', socket.id);
+    console.log('[Socket.IO] Connecté au serveur MaParis:', socket.id);
     onStatusChange('connected');
   });
 

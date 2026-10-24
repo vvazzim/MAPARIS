@@ -31,7 +31,7 @@ async function bootstrap() {
 
     console.log(`
 =====================================================
-🛡️  PARIS SECURITY PULSE - SERVEUR DÉMARRÉ
+🛡️  MAPARIS - SERVEUR DÉMARRÉ
 =====================================================
 📡 HTTP API:      http://${env.HOST}:${env.PORT}/api/health
 ⚡ WebSocket IO:  ws://${env.HOST}:${env.PORT}

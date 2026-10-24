@@ -67,7 +67,7 @@ export class SafeRoutingService {
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'ParisSecurityPulse/2.0',
+          'User-Agent': 'MaParis/2.0',
         },
         signal: AbortSignal.timeout(5000),
       });
@@ -240,6 +240,27 @@ export class SafeRoutingService {
     }
     if (osrmSafe?.alternatives && osrmSafe.alternatives.length > 0) {
       alternativePaths.push(...osrmSafe.alternatives);
+    }
+
+    // Si aucune alternative renvoyée par OSRM, on calcule un tracé alternatif réel via un contournement parallèle
+    if (alternativePaths.length === 0) {
+      const midLat = (origin.lat + destination.lat) / 2;
+      const midLng = (origin.lng + destination.lng) / 2;
+      const dLat = destination.lat - origin.lat;
+      const dLng = destination.lng - origin.lng;
+      const norm = Math.sqrt(dLat * dLat + dLng * dLng) || 1;
+      
+      // Déport latéral piéton de ~220m
+      const offsetDeg = 0.0022;
+      const altWaypoint: Point = {
+        lat: midLat - (dLng / norm) * offsetDeg,
+        lng: midLng + (dLat / norm) * offsetDeg,
+      };
+
+      const osrmAlt = await this.fetchOSRMRoute([origin, altWaypoint, destination]);
+      if (osrmAlt && osrmAlt.path.length > 0) {
+        alternativePaths.push(osrmAlt.path);
+      }
     }
 
     const safetyScore = hazardsIntersectedByDirect.length === 0 ? 98 : Math.max(88, 100 - hazardsIntersectedByDirect.length * 4);

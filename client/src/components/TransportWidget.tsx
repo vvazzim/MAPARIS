@@ -4,7 +4,7 @@ import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { useIncidentStore } from '../store/useIncidentStore';
 
 export const TransportWidget: React.FC = () => {
-  const { showTransportWidget, toggleTransportWidget, flyTo, t } = useIncidentStore();
+  const { showTransportWidget, toggleTransportWidget, flyTo, setMobileActiveTab, t } = useIncidentStore();
   const [filter, setFilter] = useState<'all' | 'disrupted'>('all');
 
   if (!showTransportWidget) return null;
@@ -18,33 +18,43 @@ export const TransportWidget: React.FC = () => {
   const disruptedCount = PARIS_TRANSPORT_HUBS.filter((s) => s.status === 'disrupted').length;
 
   return (
-    <div className="fixed inset-y-16 right-0 w-96 bg-dark-900/95 backdrop-blur-xl border-l border-dark-800 shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
-      {/* Header */}
-      <div className="p-4 border-b border-dark-800 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
-            <Train className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              {t.transport.title}
-              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-dark-800 text-slate-300 rounded">
-                PRIM API
-              </span>
-            </h3>
-            <p className="text-[11px] text-slate-400">
-              {t.transport.subtitle}
-            </p>
-          </div>
-        </div>
+    <>
+      {/* Backdrop overlay assombri sur mobile pour fermer facilement en cliquant à côté */}
+      <div
+        className="sm:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-opacity cursor-pointer"
+        onClick={toggleTransportWidget}
+        aria-hidden="true"
+      />
 
-        <button
-          onClick={toggleTransportWidget}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      <aside className="fixed inset-y-0 sm:inset-y-16 right-0 w-full sm:w-96 max-w-full bg-dark-900/98 sm:bg-dark-900/95 backdrop-blur-xl border-l border-dark-800 shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
+        {/* Header */}
+        <div className="p-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+              <Train className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                {t.transport.title}
+                <span className="text-[10px] font-mono px-1.5 py-0.5 bg-dark-800 text-slate-300 rounded border border-dark-700">
+                  RATP / PRIM
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                {t.transport.subtitle}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={toggleTransportWidget}
+            className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono cursor-pointer active:scale-95"
+            title="Fermer et revenir à la carte"
+          >
+            <X className="w-4 h-4 text-rose-400" />
+            <span className="text-[11px] font-semibold">Fermer</span>
+          </button>
+        </div>
 
       {/* Stats Summary */}
       <div className="grid grid-cols-2 gap-2 p-3 bg-dark-950/60 border-b border-dark-800 text-xs">
@@ -144,16 +154,35 @@ export const TransportWidget: React.FC = () => {
               )}
 
               <button
-                onClick={() => flyTo(station.lat, station.lng, 16)}
-                className="w-full py-1.5 px-2.5 rounded-lg bg-dark-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center space-x-1.5 transition"
+                onClick={() => {
+                  flyTo(station.lat, station.lng, 16);
+                  toggleTransportWidget();
+                  setMobileActiveTab('map');
+                }}
+                className="w-full py-2 px-3 rounded-lg bg-dark-800 hover:bg-indigo-950 border border-dark-700 hover:border-indigo-700 text-slate-200 hover:text-indigo-300 text-xs font-medium flex items-center justify-center space-x-2 transition cursor-pointer"
               >
                 <span>{t.transport.locateOnMap}</span>
-                <ExternalLink className="w-3 h-3 text-slate-400" />
+                <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
               </button>
             </div>
           );
         })}
       </div>
-    </div>
-  );
+
+      {/* Bouton bas de tiroir pour retour direct sur la carte */}
+      <div className="p-3 border-t border-dark-800 bg-dark-950/90 shrink-0">
+        <button
+          onClick={() => {
+            toggleTransportWidget();
+            setMobileActiveTab('map');
+          }}
+          className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold font-mono transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-950 active:scale-[0.98]"
+        >
+          <MapPin className="w-4 h-4" />
+          <span>{t.feed.backToMap || 'Retour à la Carte'}</span>
+        </button>
+      </div>
+    </aside>
+  </>
+);
 };

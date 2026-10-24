@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet';
+import React, { useEffect, useState, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { PARIS_TRANSPORT_HUBS } from '../../data/ratpHubs';
 import { useIncidentStore } from '../../store/useIncidentStore';
@@ -181,6 +181,8 @@ export const SecurityMap: React.FC = () => {
     voteIncident,
     activeSafeRoute,
     clearSafeRoute,
+    selectedRouteIndex,
+    setSelectedRouteIndex,
     isSafeRouteModalOpen,
     isReportModalOpen,
     language,
@@ -188,6 +190,69 @@ export const SecurityMap: React.FC = () => {
   } = useIncidentStore();
 
   const isAnyModalOpen = isSafeRouteModalOpen || isReportModalOpen;
+
+  // Calcul Haversine de la distance d'un tracé coordonnées
+  const getPathDistanceKm = (path: [number, number][]): number => {
+    let d = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const [lat1, lng1] = path[i];
+      const [lat2, lng2] = path[i + 1];
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLng = ((lng2 - lng1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLng / 2) *
+          Math.sin(dLng / 2);
+      d += 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    return Number(d.toFixed(2));
+  };
+
+  // Consolidation de l'ensemble des routes (Recommandée + Alternatives)
+  const allSafeRoutes = useMemo(() => {
+    if (!activeSafeRoute) return [];
+    const list: Array<{
+      index: number;
+      name: string;
+      path: [number, number][];
+      distanceKm: number;
+      durationMin: number;
+      safetyScore: number;
+      isRecommended: boolean;
+    }> = [
+      {
+        index: 0,
+        name: t.map.routeRecommended.replace('{num}', '1'),
+        path: activeSafeRoute.safePath,
+        distanceKm: activeSafeRoute.safeDistanceKm,
+        durationMin: activeSafeRoute.safeDurationMin,
+        safetyScore: activeSafeRoute.safetyScore,
+        isRecommended: true,
+      },
+    ];
+
+    if (activeSafeRoute.alternativePaths && activeSafeRoute.alternativePaths.length > 0) {
+      activeSafeRoute.alternativePaths.forEach((altPath, idx) => {
+        const dist = getPathDistanceKm(altPath);
+        const dur = Math.max(1, Math.round((dist / 4.5) * 60));
+        list.push({
+          index: idx + 1,
+          name: t.map.routeAlternative.replace('{num}', String(idx + 2)),
+          path: altPath,
+          distanceKm: dist,
+          durationMin: dur,
+          safetyScore: Math.max(85, activeSafeRoute.safetyScore - (idx + 1) * 3),
+          isRecommended: false,
+        });
+      });
+    }
+
+    return list;
+  }, [activeSafeRoute, t]);
+
+  const currentSelectedRoute = allSafeRoutes[selectedRouteIndex] || allSafeRoutes[0];
 
   return (
     <div className="relative w-full h-full min-h-[400px] overflow-hidden select-none bg-slate-100">
@@ -386,21 +451,7 @@ export const SecurityMap: React.FC = () => {
         {/* Active Safe Route Layer */}
         {activeSafeRoute && (
           <>
-            {/* Autres trajets alternatifs secondaires (Lignes grises) */}
-            {activeSafeRoute.alternativePaths && activeSafeRoute.alternativePaths.map((altPath, idx) => (
-              <Polyline
-                key={`alt-path-${idx}`}
-                positions={altPath}
-                pathOptions={{
-                  color: '#94a3b8',
-                  weight: 3.5,
-                  dashArray: '5 6',
-                  opacity: 0.75,
-                }}
-              />
-            ))}
-
-            {/* Trajet Direct (Ligne Rouge en évidence) */}
+            {/* Trajet Direct piéton à risque (Ligne Rouge en évidence) */}
             <Polyline
               positions={activeSafeRoute.directPath}
               pathOptions={{
@@ -409,17 +460,67 @@ export const SecurityMap: React.FC = () => {
                 dashArray: '8 8',
                 opacity: 0.85,
               }}
-            />
+            >
+              <Tooltip sticky direction="top">
+                <span className="font-mono text-xs font-semibold text-rose-500">
+                  {t.map.routeDirect} ({activeSafeRoute.directDistanceKm} km · ~{activeSafeRoute.directDurationMin} min)
+                </span>
+              </Tooltip>
+            </Polyline>
 
-            {/* Trajet Safe Recommandé (Ligne Verte Principale éclatante) */}
-            <Polyline
-              positions={activeSafeRoute.safePath}
-              pathOptions={{
-                color: '#10b981',
-                weight: 6,
-                opacity: 0.95,
-              }}
-            />
+            {/* Tracés alternatifs secondaires (Lignes grises cliquables pour switcher) */}
+            {allSafeRoutes
+              .filter((r) => r.index !== selectedRouteIndex)
+              .map((r) => (
+                <Polyline
+                  key={`alt-path-${r.index}`}
+                  positions={r.path}
+                  pathOptions={{
+                    color: '#94a3b8',
+                    weight: 4,
+                    dashArray: '5 6',
+                    opacity: 0.75,
+                    className: 'cursor-pointer hover:stroke-slate-300 transition-all',
+                  }}
+                  eventHandlers={{
+                    click: () => setSelectedRouteIndex(r.index),
+                  }}
+                >
+                  <Tooltip sticky direction="top">
+                    <div className="font-mono text-xs">
+                      <div className="font-bold text-slate-800">{r.name}</div>
+                      <div className="text-slate-600">{r.distanceKm} km · ~{r.durationMin} min</div>
+                      <div className="text-emerald-600 font-semibold mt-0.5">{t.map.switchRouteTooltip}</div>
+                    </div>
+                  </Tooltip>
+                </Polyline>
+              ))}
+
+            {/* Tracé Sélectionné Actif (Ligne Verte Principale éclatante) */}
+            {currentSelectedRoute && (
+              <Polyline
+                key={`active-safe-path-${currentSelectedRoute.index}`}
+                positions={currentSelectedRoute.path}
+                pathOptions={{
+                  color: '#10b981',
+                  weight: 6,
+                  opacity: 0.95,
+                  className: 'filter drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]',
+                }}
+              >
+                <Tooltip sticky direction="top">
+                  <div className="font-mono text-xs">
+                    <div className="font-bold text-emerald-700 flex items-center gap-1">
+                      <span>✓</span>
+                      <span>{currentSelectedRoute.name} ({t.map.routeSelectedBadge})</span>
+                    </div>
+                    <div className="text-slate-700 font-medium">
+                      {currentSelectedRoute.distanceKm} km · ~{currentSelectedRoute.durationMin} min · {currentSelectedRoute.safetyScore}% Safe
+                    </div>
+                  </div>
+                </Tooltip>
+              </Polyline>
+            )}
 
             {/* Point de Départ (A) : Rond Bleu */}
             <Marker
@@ -456,46 +557,71 @@ export const SecurityMap: React.FC = () => {
         )}
       </MapContainer>
 
-      {/* Floating Active Route Banner (Top Center) */}
+      {/* Floating Active Route Banner (Top Center) with interactive switcher */}
       {activeSafeRoute && (
-        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-dark-900/95 border border-dark-700 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-xs transition-opacity duration-200 ${
-          isAnyModalOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-dark-900/95 border border-dark-700 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-2.5 md:gap-4 text-xs transition-all duration-200 ${
+          isAnyModalOpen ? 'opacity-0 pointer-events-none invisible !hidden' : 'opacity-100'
         }`}>
+          {/* Tracé sélectionné & métriques dynamiques */}
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="font-bold text-white">{t.map.activeSafeRoute}</span>
-            <span className="font-mono text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">
-              {t.map.safePercent.replace('{percent}', String(activeSafeRoute.safetyScore))}
+            <span className="font-bold text-white whitespace-nowrap">
+              {currentSelectedRoute?.name || t.map.activeSafeRoute}
             </span>
-            <span className="text-slate-300">
-              ({activeSafeRoute.safeDistanceKm} km · ~{activeSafeRoute.safeDurationMin} min)
+            <span className="font-mono text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800 whitespace-nowrap">
+              {t.map.safePercent.replace('{percent}', String(currentSelectedRoute?.safetyScore ?? activeSafeRoute.safetyScore))}
+            </span>
+            <span className="text-slate-300 whitespace-nowrap">
+              ({currentSelectedRoute?.distanceKm ?? activeSafeRoute.safeDistanceKm} km · ~{currentSelectedRoute?.durationMin ?? activeSafeRoute.safeDurationMin} min)
             </span>
           </div>
 
+          {/* Boutons de bascule (switcher) pour changer de tracé en 1 clic */}
+          {allSafeRoutes.length > 1 && (
+            <div className="flex items-center gap-1 bg-dark-950/80 p-1 rounded-xl border border-dark-800">
+              {allSafeRoutes.map((r) => {
+                const isSelected = selectedRouteIndex === r.index;
+                return (
+                  <button
+                    key={r.index}
+                    onClick={() => setSelectedRouteIndex(r.index)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono text-[11px] font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-sm shadow-emerald-950'
+                        : 'text-slate-400 hover:text-white hover:bg-dark-800 border border-transparent'
+                    }`}
+                    title={t.map.switchRouteTooltip}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-400' : 'bg-slate-400'}`} />
+                    <span>{r.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Légende couleurs des tracés */}
-          <div className="flex items-center gap-3 text-[11px] font-mono border-t sm:border-t-0 sm:border-l border-dark-750 pt-1.5 sm:pt-0 sm:pl-3">
+          <div className="flex items-center gap-3 text-[11px] font-mono border-t md:border-t-0 md:border-l border-dark-750 pt-1.5 md:pt-0 md:pl-3">
             <span className="flex items-center gap-1.5 text-emerald-400">
               <span className="w-3.5 h-1 rounded-full bg-emerald-500"></span>
-              <span>Safe</span>
+              <span>Vert (Sélectionné)</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="w-3.5 h-1 rounded-full bg-slate-400"></span>
+              <span>Gris (Alternatif)</span>
             </span>
             <span className="flex items-center gap-1.5 text-rose-400">
               <span className="w-3.5 h-1 rounded-full bg-rose-500"></span>
-              <span>Direct</span>
+              <span>Rouge (Direct)</span>
             </span>
-            {activeSafeRoute.alternativePaths && activeSafeRoute.alternativePaths.length > 0 && (
-              <span className="flex items-center gap-1.5 text-slate-400">
-                <span className="w-3.5 h-1 rounded-full bg-slate-400"></span>
-                <span>Autres</span>
-              </span>
-            )}
           </div>
 
           <button
             onClick={clearSafeRoute}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition active:scale-95 cursor-pointer ml-auto"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition active:scale-95 cursor-pointer md:ml-auto"
             title={t.map.clearRouteTitle}
           >
             <X className="w-4 h-4" />
@@ -504,8 +630,8 @@ export const SecurityMap: React.FC = () => {
       )}
 
       {/* Floating Map Action Controls (Top Right) - Retractable on Mobile & Hidden when Modal is Open */}
-      <div className={`absolute top-4 right-3 sm:right-4 z-[400] flex flex-col items-end gap-2 transition-opacity duration-200 ${
-        isAnyModalOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+      <div className={`absolute top-4 right-3 sm:right-4 z-[400] flex flex-col items-end gap-2 transition-all duration-200 ${
+        isAnyModalOpen ? 'opacity-0 pointer-events-none invisible !hidden' : 'opacity-100'
       }`}>
         {/* Mobile Toggle Button (< md) */}
         <button

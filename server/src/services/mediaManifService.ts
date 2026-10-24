@@ -1,7 +1,7 @@
 import { incidentRepository } from '../repositories/incidentRepository.js';
 import { geocodingService } from './geocodingService.js';
 import { getReadableLocation } from './landmarkService.js';
-import { broadcastNewIncident, broadcastIncidentUpdated } from '../sockets/socketHandler.js';
+import { broadcastNewIncident, broadcastIncidentUpdated, broadcastIncidentExpired } from '../sockets/socketHandler.js';
 import { Severity, IncidentCategory, Incident } from '../types/index.js';
 
 export interface RawMediaManifPoint {
@@ -118,6 +118,13 @@ export class MediaManifService {
           category: 'manifestation',
           description: '🪧 [Mobilisation] Point de rassemblement citoyen signalé (MediaManif).',
         };
+      case '1':
+      case 'safe': // Calme / Zone Safe (Vert)
+        return {
+          severity: 'safe',
+          category: 'calme',
+          description: '🟢 [Zone Calme] Secteur fluide et sécurisé (MediaManif).',
+        };
       default:
         return {
           severity: 'warning',
@@ -180,7 +187,8 @@ export class MediaManifService {
           addressName = getReadableLocation(lat, lng);
         }
 
-        // 5. Ingestion avec notre logique de clustering à 50m et TTL dynamique 1h
+        // 5. Ingestion avec clustering et TTL dynamique plafonné strictement à 2h (7200s)
+        const remainingTtlSec = Math.max(300, 7200 - ageSec);
         const { incident, isClusterMerge } = await incidentRepository.processIncidentReport({
           lat,
           lng,
@@ -189,6 +197,7 @@ export class MediaManifService {
           category: mapping.category,
           description: mapping.description,
           source: 'MediaManif Citoyen (mediamanif.org)',
+          ttlSeconds: remainingTtlSec,
         });
 
         incidentsResult.push(incident);
@@ -208,6 +217,25 @@ export class MediaManifService {
       const { mergedCount } = await incidentRepository.mergeAllOverlappingIncidents(0.50);
       if (mergedCount > 0) {
         clusteredMerged += mergedCount;
+      }
+
+      // Nettoyage strict 2h : tout signalement MediaManif de plus de 2 heures sans nouveau signalement est supprimé
+      const allIncidents = await incidentRepository.getAll({ limit: 1000 });
+      const nowMs = Date.now();
+      const twoHoursMs = 2 * 3600 * 1000;
+      let expiredMediaManifCount = 0;
+
+      for (const inc of allIncidents) {
+        if (inc.source && inc.source.includes('MediaManif')) {
+          const ageMs = nowMs - new Date(inc.created_at).getTime();
+          const isExpired = new Date(inc.expires_at).getTime() <= nowMs || ageMs >= twoHoursMs;
+          if (isExpired) {
+            await incidentRepository.deleteById(inc.id);
+            broadcastIncidentExpired(inc.id);
+            expiredMediaManifCount++;
+            console.log(`🧹 [MediaManif TTL 2h] Signalement retiré (${inc.id} - ${inc.location_name}) : plus de 2 heures écoulées.`);
+          }
+        }
       }
 
       console.log(`✅ [MediaManif] Sync réussie : ${rawPoints.length} points bruts, ${parisCount} à Paris, ${newCreated} créés, ${clusteredMerged} fusionnés.`);

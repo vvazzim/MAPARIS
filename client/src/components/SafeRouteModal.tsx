@@ -118,7 +118,7 @@ export const SafeRouteModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       {/* Backdrop overlay assombri */}
       <div 
         className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity cursor-pointer"
@@ -127,10 +127,7 @@ export const SafeRouteModal: React.FC = () => {
       />
 
       <div 
-        className="relative w-full max-w-xl bg-dark-900 border border-dark-750 rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200"
-        style={{
-          maxHeight: 'min(92dvh, 780px)',
-        }}
+        className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[min(92dvh,780px)] sm:max-w-xl bg-dark-900 border-0 sm:border border-dark-750 sm:rounded-2xl rounded-none shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200"
       >
         {/* Header */}
         <div className="px-5 sm:px-6 py-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
@@ -152,9 +149,11 @@ export const SafeRouteModal: React.FC = () => {
           </div>
           <button
             onClick={closeSafeRouteModal}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition"
+            className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono cursor-pointer active:scale-95"
+            title="Fermer et revenir à la carte"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 text-rose-400" />
+            <span className="text-[11px] font-semibold">Carte</span>
           </button>
         </div>
 
@@ -347,6 +346,16 @@ export const SafeRouteModal: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Alternatives badge hint */}
+              {routeResult.alternativePaths && routeResult.alternativePaths.length > 0 && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-dark-900 border border-dark-800 text-[11px] text-slate-300">
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span>
+                    {routeResult.alternativePaths.length} tracé(s) alternatif(s) calculé(s) : basculez d'un clic sur la carte ou dans le bandeau supérieur.
+                  </span>
+                </div>
+              )}
 
               {/* Recommendation Note */}
               <p className="text-xs text-slate-300 bg-dark-900 p-2.5 rounded-lg border border-dark-800 leading-relaxed">

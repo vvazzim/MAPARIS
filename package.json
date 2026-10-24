@@ -1,8 +1,8 @@
 {
-  "name": "paris-security-pulse-monorepo",
+  "name": "maparis-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "Paris Security Pulse - Plateforme temps réel de cartographie Safe / Pas Safe des événements à Paris",
+  "description": "MaParis - Plateforme temps réel de cartographie Safe / Pas Safe des événements en Île-de-France",
   "workspaces": [
     "client",
     "server"

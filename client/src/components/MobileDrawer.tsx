@@ -67,7 +67,7 @@ export const MobileDrawer: React.FC = () => {
                 <ShieldAlert className="w-5 h-5 animate-pulse" />
               </div>
               <div>
-                <h3 className="font-bold text-white text-base">Paris Security Pulse</h3>
+                <h3 className="font-bold text-white text-base">MaParis</h3>
                 <p className="text-[11px] text-slate-400 font-mono">{t.mobile.menuTitle}</p>
               </div>
             </div>

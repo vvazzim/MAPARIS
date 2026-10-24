@@ -22,8 +22,8 @@ export function detectDefaultLanguage(): Language {
 export const translations = {
   fr: {
     header: {
-      title: 'Paris Security Pulse',
-      subtitle: 'Monitoring temps réel de la sécurité & manifestations à Paris',
+      title: 'MaParis',
+      subtitle: 'Sécurité urbaine & vigilance en direct (Paris & IDF)',
       liveOsint: 'Live OSINT',
       dangerCount: '{count} Alertes Rouges',
       warningCount: '{count} Tensions',
@@ -57,8 +57,8 @@ export const translations = {
     reportModal: {
       title: 'Signaler un Événement',
       subtitle: 'Alerte communautaire géocodée en temps réel (Paris & IDF)',
-      locationLabel: 'Localisation',
-      locationPlaceholder: 'Ex: Place de la République, 10 rue de Rivoli...',
+      locationLabel: 'Adresse en Île-de-France (Paris, 92, 93, 94, etc.)',
+      locationPlaceholder: 'Ex: Place de la République, La Défense, Nanterre, Créteil, Saint-Denis...',
       severityLabel: 'Niveau de Gravité',
       dangerTitle: 'Danger',
       dangerDesc: 'Émeute, feux, violence',
@@ -182,12 +182,18 @@ export const translations = {
       togglePerimetersTitle: "Basculer l'affichage des périmètres de sécurité",
       toggleRatpTitle: "Basculer l'affichage des stations de métro RATP",
       recenterTitle: 'Recentrer la carte sur Paris',
+      routeRecommended: 'Tracé {num} (Recommandé)',
+      routeAlternative: 'Tracé {num} (Alternatif)',
+      routeDirect: 'Tracé Direct (Risque)',
+      switchRouteTooltip: 'Cliquer pour choisir ce tracé (passer en vert)',
+      routeSelectedBadge: 'Sélectionné',
+      routeAlternativeBadge: 'Alternatif',
     },
   },
   en: {
     header: {
-      title: 'Paris Security Pulse',
-      subtitle: 'Real-time safety & protest monitoring in Paris',
+      title: 'MaParis',
+      subtitle: 'Real-time urban safety & protest monitoring (Paris & IDF)',
       liveOsint: 'Live OSINT',
       dangerCount: '{count} Red Alerts',
       warningCount: '{count} Warnings',
@@ -221,8 +227,8 @@ export const translations = {
     reportModal: {
       title: 'Report an Incident',
       subtitle: 'Real-time geocoded civic alert (Paris & Greater Region)',
-      locationLabel: 'Location',
-      locationPlaceholder: 'Ex: Place de la République, 10 rue de Rivoli...',
+      locationLabel: 'Address in Île-de-France (Paris, 92, 93, 94, etc.)',
+      locationPlaceholder: 'Ex: Place de la République, La Défense, Nanterre, Créteil, Saint-Denis...',
       severityLabel: 'Severity Level',
       dangerTitle: 'Danger',
       dangerDesc: 'Riot, fire, violent clashes',
@@ -346,6 +352,12 @@ export const translations = {
       togglePerimetersTitle: 'Toggle security perimeters',
       toggleRatpTitle: 'Toggle RATP metro stations',
       recenterTitle: 'Recenter map on Paris',
+      routeRecommended: 'Route {num} (Recommended)',
+      routeAlternative: 'Route {num} (Alternative)',
+      routeDirect: 'Direct Route (Hazard)',
+      switchRouteTooltip: 'Click to select this route (turn green)',
+      routeSelectedBadge: 'Selected',
+      routeAlternativeBadge: 'Alternative',
     },
   },
 };

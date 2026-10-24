@@ -30,6 +30,8 @@ interface IncidentState {
 
   // Active Safe Route on Map
   activeSafeRoute: SafeRouteResult | null;
+  selectedRouteIndex: number;
+  setSelectedRouteIndex: (idx: number) => void;
 
   // Actions
   setIncidents: (incidents: Incident[]) => void;
@@ -89,6 +91,8 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
     showDangerRadius: true,
     showTransports: true,
     activeSafeRoute: null,
+    selectedRouteIndex: 0,
+    setSelectedRouteIndex: (selectedRouteIndex) => set({ selectedRouteIndex }),
 
   setIncidents: (incidents) => set({ incidents }),
   
@@ -153,8 +157,8 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
   openSafeRouteModal: () => set({ isSafeRouteModalOpen: true, isMobileMenuOpen: false }),
   closeSafeRouteModal: () => set({ isSafeRouteModalOpen: false }),
 
-  setActiveSafeRoute: (route) => set({ activeSafeRoute: route }),
-  clearSafeRoute: () => set({ activeSafeRoute: null }),
+  setActiveSafeRoute: (route) => set({ activeSafeRoute: route, selectedRouteIndex: 0 }),
+  clearSafeRoute: () => set({ activeSafeRoute: null, selectedRouteIndex: 0 }),
 
   voteIncident: async (id: string, type: 'up' | 'down') => {
     try {

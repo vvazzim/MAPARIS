@@ -26,6 +26,10 @@ export const IncidentFeed: React.FC = () => {
     setSelectedIncident, 
     openReportModal, 
     voteIncident,
+    flyTo,
+    showTransportWidget,
+    toggleTransportWidget,
+    closeMobileMenu,
     mobileActiveTab,
     setMobileActiveTab,
     language,
@@ -166,7 +170,13 @@ export const IncidentFeed: React.FC = () => {
             return (
               <div
                 key={incident.id}
-                onClick={() => setSelectedIncident(incident)}
+                onClick={() => {
+                  setSelectedIncident(incident);
+                  flyTo(incident.lat, incident.lng, 16);
+                  setMobileActiveTab('map');
+                  if (showTransportWidget) toggleTransportWidget();
+                  closeMobileMenu();
+                }}
                 className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-dark-800 border-pulse-accent shadow-lg shadow-blue-950/30'

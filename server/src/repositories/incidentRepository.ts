@@ -344,6 +344,7 @@ export class IncidentRepository {
     category?: Incident['category'];
     description: string;
     source: string;
+    ttlSeconds?: number;
   }): Promise<{ incident: Incident; isClusterMerge: boolean; conflictResolved?: boolean }> {
     // Garantit que l'emplacement est toujours un repère parisien ou une adresse lisible, jamais des coordonnées brutes
     const resolvedLocationName = getReadableLocation(data.lat, data.lng, data.location_name);
@@ -416,9 +417,11 @@ export class IncidentRepository {
         nearby.severity = 'danger';
       }
 
-      // Prolongation dynamique du TTL (+30 minutes, max 6h depuis création)
-      const maxGlobalExpiry = new Date(createdAt.getTime() + 6 * 3600 * 1000); // 6h max
-      const extendedExpiry = new Date(currentExpiry.getTime() + 30 * 60 * 1000); // +30 min
+      // Prolongation dynamique du TTL (+30 minutes, max 2h pour MediaManif, max 6h pour citoyen)
+      const isMediaManif = (nearby.source && nearby.source.includes('MediaManif')) || (data.source && data.source.includes('MediaManif'));
+      const maxLifespanMs = isMediaManif ? 2 * 3600 * 1000 : 6 * 3600 * 1000;
+      const maxGlobalExpiry = new Date(createdAt.getTime() + maxLifespanMs);
+      const extendedExpiry = new Date(currentExpiry.getTime() + (isMediaManif ? 20 * 60 * 1000 : 30 * 60 * 1000));
       nearby.expires_at = (extendedExpiry > maxGlobalExpiry ? maxGlobalExpiry : extendedExpiry).toISOString();
 
       // Mise à jour de la description avec le signalement le plus récent (strictement limité à 160 caractères)
@@ -436,8 +439,11 @@ export class IncidentRepository {
     // CAS 2 : Aucun périmètre croisé à >50% -> Création d'un NOUVEAU point
     // =========================================================================
     const now = new Date();
-    // TTL de base : 1 heure
-    const baseExpiry = new Date(now.getTime() + 60 * 60 * 1000);
+    // TTL dynamique : respecte ttlSeconds si fourni, sinon max 2h pour MediaManif, 1h pour signalement citoyen standard
+    const isMediaManif = data.source && data.source.includes('MediaManif');
+    const defaultTtlSec = isMediaManif ? 7200 : 3600;
+    const ttlMs = (data.ttlSeconds !== undefined ? data.ttlSeconds : defaultTtlSec) * 1000;
+    const baseExpiry = new Date(now.getTime() + ttlMs);
 
     const newIncident: Incident = {
       id: `inc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,

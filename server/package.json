@@ -1,8 +1,8 @@
 {
-  "name": "paris-security-pulse-server",
+  "name": "maparis-server",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend Fastify + Socket.io pour Paris Security Pulse",
+  "description": "Backend Fastify + Socket.io pour MaParis",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

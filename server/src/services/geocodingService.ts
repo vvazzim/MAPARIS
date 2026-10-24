@@ -65,7 +65,7 @@ export class GeocodingService {
       const response = await fetch(url.toString(), {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'ParisSecurityPulse/1.0',
+          'User-Agent': 'MaParis/1.0',
         },
         signal: AbortSignal.timeout(5000), // 5 secondes timeout max
       });
