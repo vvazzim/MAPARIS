@@ -200,7 +200,7 @@ export const SafeRouteModal: React.FC = () => {
             {/* Origin */}
             <div className="relative">
               <label className="block text-[11px] font-medium text-slate-400 mb-1 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50"></span>
                 <span>{t.safeRouteModal.originLabel}</span>
               </label>
               <div className="relative">
@@ -213,9 +213,9 @@ export const SafeRouteModal: React.FC = () => {
                   }}
                   onFocus={() => originSuggestions.length > 0 && setShowOriginDrop(true)}
                   placeholder={t.safeRouteModal.originPlaceholder}
-                  className="w-full pl-9 pr-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-9 pr-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                 />
-                <MapPin className="w-4 h-4 text-emerald-400 absolute left-2.5 top-2.5" />
+                <MapPin className="w-4 h-4 text-blue-400 absolute left-2.5 top-2.5" />
               </div>
               {showOriginDrop && originSuggestions.length > 0 && (
                 <div className="absolute left-0 right-0 mt-1 bg-dark-850 border border-dark-700 rounded-lg shadow-xl z-20 overflow-hidden divide-y divide-dark-800">

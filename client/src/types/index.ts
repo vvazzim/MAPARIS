@@ -58,6 +58,7 @@ export interface SafeRouteResult {
   destination: { lat: number; lng: number; address: string };
   directPath: [number, number][];
   safePath: [number, number][];
+  alternativePaths?: [number, number][][];
   directDistanceKm: number;
   safeDistanceKm: number;
   directDurationMin: number;

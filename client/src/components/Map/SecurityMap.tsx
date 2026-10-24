@@ -135,18 +135,39 @@ const createStationIcon = (status: 'normal' | 'disrupted' | 'closed') => {
 };
 
 const createRoutePinIcon = (type: 'origin' | 'destination') => {
-  const isOrigin = type === 'origin';
+  if (type === 'origin') {
+    // Rond bleu pour le point de départ A
+    return L.divIcon({
+      className: 'custom-route-origin-dot',
+      html: `
+        <div class="relative flex items-center justify-center w-7 h-7">
+          <span class="animate-ping absolute inline-flex h-6 w-6 rounded-full bg-blue-400 opacity-60"></span>
+          <div class="relative flex items-center justify-center w-5 h-5 rounded-full bg-blue-500 border-2 border-white shadow-xl">
+            <div class="w-1.5 h-1.5 rounded-full bg-white"></div>
+          </div>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+      popupAnchor: [0, -14],
+    });
+  }
+
+  // Pin rose pour la destination
   return L.divIcon({
-    className: 'custom-route-pin',
+    className: 'custom-route-destination-pin',
     html: `
-      <div class="flex items-center justify-center w-7 h-7 rounded-full ${
-        isOrigin ? 'bg-emerald-500 border-2 border-white' : 'bg-rose-500 border-2 border-white'
-      } shadow-xl text-white font-bold text-[11px] font-mono">
-        ${isOrigin ? 'A' : 'B'}
+      <div class="relative flex items-center justify-center -translate-y-2 cursor-pointer filter drop-shadow-xl">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="34" viewBox="0 0 24 28" fill="none">
+          <path d="M12 0C5.37258 0 0 5.37258 0 12C0 19.5 12 28 12 28C12 28 24 19.5 24 12C24 5.37258 18.6274 0 12 0Z" fill="#f43f5e"/>
+          <path d="M12 0C5.37258 0 0 5.37258 0 12C0 19.5 12 28 12 28C12 28 24 19.5 24 12C24 5.37258 18.6274 0 12 0Z" stroke="#ffffff" stroke-width="1.8"/>
+          <circle cx="12" cy="11" r="4" fill="#ffffff"/>
+        </svg>
       </div>
     `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    iconSize: [30, 34],
+    iconAnchor: [15, 34],
+    popupAnchor: [0, -34],
   });
 };
 
@@ -365,49 +386,69 @@ export const SecurityMap: React.FC = () => {
         {/* Active Safe Route Layer */}
         {activeSafeRoute && (
           <>
-            {/* Direct Unsafe Path (Dashed Red Line) */}
+            {/* Autres trajets alternatifs secondaires (Lignes grises) */}
+            {activeSafeRoute.alternativePaths && activeSafeRoute.alternativePaths.map((altPath, idx) => (
+              <Polyline
+                key={`alt-path-${idx}`}
+                positions={altPath}
+                pathOptions={{
+                  color: '#94a3b8',
+                  weight: 3.5,
+                  dashArray: '5 6',
+                  opacity: 0.75,
+                }}
+              />
+            ))}
+
+            {/* Trajet Direct (Ligne Rouge en évidence) */}
             <Polyline
               positions={activeSafeRoute.directPath}
               pathOptions={{
                 color: '#ef4444',
-                weight: 2.5,
-                dashArray: '6 8',
-                opacity: 0.6,
+                weight: 4,
+                dashArray: '8 8',
+                opacity: 0.85,
               }}
             />
 
-            {/* Safe Route (Solid Vibrant Emerald Neon Line) */}
+            {/* Trajet Safe Recommandé (Ligne Verte Principale éclatante) */}
             <Polyline
               positions={activeSafeRoute.safePath}
               pathOptions={{
                 color: '#10b981',
-                weight: 5,
+                weight: 6,
                 opacity: 0.95,
               }}
             />
 
-            {/* Origin Pin (A) */}
+            {/* Point de Départ (A) : Rond Bleu */}
             <Marker
               position={[activeSafeRoute.origin.lat, activeSafeRoute.origin.lng]}
               icon={createRoutePinIcon('origin')}
             >
               <Popup>
                 <div className="p-1 text-xs">
-                  <span className="font-bold text-emerald-400">{t.map.start}</span>
-                  <p className="text-white mt-0.5">{activeSafeRoute.origin.address}</p>
+                  <div className="flex items-center gap-1.5 font-bold text-blue-400 mb-0.5">
+                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>{t.map.start}</span>
+                  </div>
+                  <p className="text-white">{activeSafeRoute.origin.address}</p>
                 </div>
               </Popup>
             </Marker>
 
-            {/* Destination Pin (B) */}
+            {/* Destination : Pin Rose */}
             <Marker
               position={[activeSafeRoute.destination.lat, activeSafeRoute.destination.lng]}
               icon={createRoutePinIcon('destination')}
             >
               <Popup>
                 <div className="p-1 text-xs">
-                  <span className="font-bold text-rose-400">{t.map.end}</span>
-                  <p className="text-white mt-0.5">{activeSafeRoute.destination.address}</p>
+                  <div className="flex items-center gap-1.5 font-bold text-rose-400 mb-0.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>{t.map.end}</span>
+                  </div>
+                  <p className="text-white">{activeSafeRoute.destination.address}</p>
                 </div>
               </Popup>
             </Marker>
@@ -417,14 +458,14 @@ export const SecurityMap: React.FC = () => {
 
       {/* Floating Active Route Banner (Top Center) */}
       {activeSafeRoute && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-dark-900/95 border border-emerald-500/40 backdrop-blur-xl px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 text-xs">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[400] bg-dark-900/95 border border-dark-700 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-xs">
           <div className="flex items-center gap-2">
             <span className="flex h-2.5 w-2.5 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
             <span className="font-bold text-white">{t.map.activeSafeRoute}</span>
-            <span className="font-mono text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.5 rounded">
+            <span className="font-mono text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">
               {t.map.safePercent.replace('{percent}', String(activeSafeRoute.safetyScore))}
             </span>
             <span className="text-slate-300">
@@ -432,9 +473,27 @@ export const SecurityMap: React.FC = () => {
             </span>
           </div>
 
+          {/* Légende couleurs des tracés */}
+          <div className="flex items-center gap-3 text-[11px] font-mono border-t sm:border-t-0 sm:border-l border-dark-750 pt-1.5 sm:pt-0 sm:pl-3">
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <span className="w-3.5 h-1 rounded-full bg-emerald-500"></span>
+              <span>Safe</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-rose-400">
+              <span className="w-3.5 h-1 rounded-full bg-rose-500"></span>
+              <span>Direct</span>
+            </span>
+            {activeSafeRoute.alternativePaths && activeSafeRoute.alternativePaths.length > 0 && (
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <span className="w-3.5 h-1 rounded-full bg-slate-400"></span>
+                <span>Autres</span>
+              </span>
+            )}
+          </div>
+
           <button
             onClick={clearSafeRoute}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition active:scale-95 cursor-pointer ml-auto"
             title={t.map.clearRouteTitle}
           >
             <X className="w-4 h-4" />

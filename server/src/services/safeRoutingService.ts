@@ -20,6 +20,7 @@ export interface SafeRouteResult {
   destination: Point & { address: string };
   directPath: [number, number][];
   safePath: [number, number][];
+  alternativePaths?: [number, number][][];
   directDistanceKm: number;
   safeDistanceKm: number;
   directDurationMin: number;
@@ -57,10 +58,11 @@ export class SafeRoutingService {
     path: [number, number][];
     distanceKm: number;
     durationMin: number;
+    alternatives: [number, number][][];
   } | null> {
     try {
       const coordString = waypoints.map((p) => `${p.lng.toFixed(6)},${p.lat.toFixed(6)}`).join(';');
-      const url = `${this.osrmBaseUrl}/${coordString}?overview=full&geometries=geojson`;
+      const url = `${this.osrmBaseUrl}/${coordString}?overview=full&geometries=geojson&alternatives=true`;
 
       const response = await fetch(url, {
         headers: {
@@ -81,7 +83,11 @@ export class SafeRoutingService {
       const distanceKm = Number((route.distance / 1000).toFixed(2));
       const durationMin = Math.max(1, Math.round(route.duration / 60));
 
-      return { path, distanceKm, durationMin };
+      const alternatives: [number, number][][] = (data.routes.slice(1) || []).map((r: any) =>
+        r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]])
+      );
+
+      return { path, distanceKm, durationMin, alternatives };
     } catch (err: any) {
       console.warn('[SafeRouting] OSRM non joignable, fallback actif:', err.message);
       return null;
@@ -138,29 +144,28 @@ export class SafeRoutingService {
     }));
 
     // 3. Calcul du tracé piéton direct réel (rues et ponts)
-    let directRoute = await this.fetchOSRMRoute([origin, destination]);
+    const osrmDirect = await this.fetchOSRMRoute([origin, destination]);
+    const directDist = getDistanceKm(origin, destination);
 
-    // Fallback si OSRM est indisponible : tracé multi-points le long des axes parisiens
-    if (!directRoute) {
-      const midPoint: Point = {
-        lat: (origin.lat + destination.lat) / 2,
-        lng: (origin.lng + destination.lng) / 2,
-      };
-      const directDist = getDistanceKm(origin, destination);
-      directRoute = {
-        path: [
-          [origin.lat, origin.lng],
-          [midPoint.lat, midPoint.lng],
-          [destination.lat, destination.lng],
-        ],
-        distanceKm: Number(directDist.toFixed(2)),
-        durationMin: Math.round((directDist / 4.5) * 60),
-      };
-    }
+    const directRoute: {
+      path: [number, number][];
+      distanceKm: number;
+      durationMin: number;
+      alternatives: [number, number][][];
+    } = osrmDirect || {
+      path: [
+        [origin.lat, origin.lng],
+        [(origin.lat + destination.lat) / 2, (origin.lng + destination.lng) / 2],
+        [destination.lat, destination.lng],
+      ],
+      distanceKm: Number(directDist.toFixed(2)),
+      durationMin: Math.round((directDist / 4.5) * 60),
+      alternatives: [],
+    };
 
     // 4. Détection des zones de danger traversées par le tracé direct réel
     const hazardsIntersectedByDirect = hazards.filter((h) =>
-      this.checkHazardIntersection(directRoute!.path, h)
+      this.checkHazardIntersection(directRoute.path, h)
     );
 
     // 5. Algorithme de contournement propre avec calcul de waypoints déportés
@@ -168,6 +173,7 @@ export class SafeRoutingService {
     let safeDistanceKm = directRoute.distanceKm;
     let safeDurationMin = directRoute.durationMin;
     const hazardsAvoided: RouteHazard[] = [];
+    let osrmSafe: Awaited<ReturnType<typeof this.fetchOSRMRoute>> = null;
 
     if (hazardsIntersectedByDirect.length > 0) {
       const avoidanceWaypoints: Point[] = [];
@@ -201,7 +207,7 @@ export class SafeRoutingService {
       }
 
       // Calcul du nouvel itinéraire piéton réel passant par les waypoints de contournement
-      const osrmSafe = await this.fetchOSRMRoute([origin, ...avoidanceWaypoints, destination]);
+      osrmSafe = await this.fetchOSRMRoute([origin, ...avoidanceWaypoints, destination]);
 
       if (osrmSafe) {
         safePath = osrmSafe.path;
@@ -227,6 +233,15 @@ export class SafeRoutingService {
       }
     }
 
+    // Trajets alternatifs secondaires (affichés en gris sur la carte)
+    const alternativePaths: [number, number][][] = [];
+    if (directRoute.alternatives && directRoute.alternatives.length > 0) {
+      alternativePaths.push(...directRoute.alternatives);
+    }
+    if (osrmSafe?.alternatives && osrmSafe.alternatives.length > 0) {
+      alternativePaths.push(...osrmSafe.alternatives);
+    }
+
     const safetyScore = hazardsIntersectedByDirect.length === 0 ? 98 : Math.max(88, 100 - hazardsIntersectedByDirect.length * 4);
 
     const detourExtraMeters = Math.max(0, Math.round((safeDistanceKm - directRoute.distanceKm) * 1000));
@@ -240,6 +255,7 @@ export class SafeRoutingService {
       destination,
       directPath: directRoute.path,
       safePath,
+      alternativePaths,
       directDistanceKm: directRoute.distanceKm,
       safeDistanceKm,
       directDurationMin: directRoute.durationMin,
