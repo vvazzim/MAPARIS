@@ -162,10 +162,15 @@ export const ReportModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div 
+        className="relative w-full max-w-lg bg-dark-900 border-t sm:border border-dark-800 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] sm:max-h-[90dvh]"
+        style={{
+          maxHeight: 'min(96dvh, 100dvh)',
+        }}
+      >
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/60">
+        <div className="px-5 sm:px-6 py-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500">
               <Radio className="w-5 h-5 animate-pulse" />
@@ -186,7 +191,14 @@ export const ReportModal: React.FC = () => {
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-5">
+        <form 
+          onSubmit={handleSubmit} 
+          className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5"
+          style={{
+            paddingBottom: 'max(2.5rem, calc(2rem + env(safe-area-inset-bottom, 24px)))',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {errorMessage && (
             <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -365,33 +377,45 @@ export const ReportModal: React.FC = () => {
             />
           </div>
 
-          {/* Footer Submit */}
-          <div className="pt-2 flex items-center justify-end space-x-3 border-t border-dark-800">
-            <button
-              type="button"
-              onClick={closeReportModal}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-dark-800 transition"
-            >
-              Annuler
-            </button>
+          {/* Footer Submit & Legend with Safe-Area Protection */}
+          <div 
+            className="pt-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-dark-800"
+            style={{
+              paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 12px))'
+            }}
+          >
+            <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              <span>Diffusion immédiate temps réel (Socket.io)</span>
+            </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold flex items-center space-x-2 transition shadow-lg shadow-rose-950"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Géocodage & Diffusion...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Diffuser l'Alerte en Direct</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={closeReportModal}
+                className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-dark-800 transition"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center space-x-2 transition shadow-lg shadow-rose-950 active:scale-95"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Géocodage & Diffusion...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Diffuser l'Alerte en Direct</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

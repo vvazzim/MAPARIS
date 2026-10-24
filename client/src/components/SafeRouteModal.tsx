@@ -117,10 +117,15 @@ export const SafeRouteModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-xl bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div 
+        className="relative w-full max-w-xl bg-dark-900 border-t sm:border border-dark-800 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] sm:max-h-[90dvh]"
+        style={{
+          maxHeight: 'min(96dvh, 100dvh)',
+        }}
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/60">
+        <div className="px-5 sm:px-6 py-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
               <Compass className="w-5 h-5 animate-spin" style={{ animationDuration: '20s' }} />
@@ -146,7 +151,13 @@ export const SafeRouteModal: React.FC = () => {
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div 
+          className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4"
+          style={{
+            paddingBottom: 'max(2.5rem, calc(2rem + env(safe-area-inset-bottom, 24px)))',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {errorMessage && (
             <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
               {errorMessage}

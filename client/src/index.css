@@ -99,3 +99,14 @@ body {
 .animate-radar {
   animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
+
+/* Mobile Safe Area & Dynamic Viewport Height (dvh) */
+@supports (height: 100dvh) {
+  .max-h-dvh {
+    max-height: 100dvh;
+  }
+}
+
+.modal-safe-bottom {
+  padding-bottom: max(2rem, calc(1.5rem + env(safe-area-inset-bottom, 24px)));
+}
