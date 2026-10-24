@@ -177,6 +177,7 @@ export const SecurityMap: React.FC = () => {
     showTransports,
     toggleDangerRadius,
     toggleTransports,
+    toggleTransportWidget,
     flyTo,
     voteIncident,
     activeSafeRoute,
@@ -629,71 +630,89 @@ export const SecurityMap: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Map Action Controls (Top Right) - Retractable on Mobile & Hidden when Modal is Open */}
-      <div className={`absolute top-4 right-3 sm:right-4 z-[400] flex flex-col items-end gap-2 transition-all duration-200 ${
+      {/* Floating Map Action Controls (En bas à droite - Se merge dans le même bouton après utilisation) */}
+      <div className={`absolute bottom-20 lg:bottom-6 right-3 lg:right-6 z-[400] flex flex-col items-end gap-2 transition-all duration-200 ${
         isAnyModalOpen ? 'opacity-0 pointer-events-none invisible !hidden' : 'opacity-100'
       }`}>
-        {/* Mobile Toggle Button (< md) */}
-        <button
-          onClick={() => setIsControlsOpen((prev: boolean) => !prev)}
-          className="md:hidden p-2.5 rounded-xl border border-dark-700 bg-dark-900/95 backdrop-blur-md text-slate-300 hover:text-white shadow-xl transition active:scale-95 flex items-center gap-1.5 text-xs font-medium"
-          title="Outils carte"
-          aria-label="Contrôles de la carte"
-        >
-          {isControlsOpen ? (
-            <>
-              <X className="w-4 h-4 text-rose-400" />
-              <span className="text-[11px] font-mono text-rose-400">Fermer</span>
-            </>
-          ) : (
-            <>
-              <SlidersHorizontal className="w-4 h-4 text-pulse-accent" />
-              <span className="text-[11px] font-mono text-slate-200">Outils</span>
-            </>
-          )}
-        </button>
+        {/* Transparent click-outside backdrop when controls are expanded */}
+        {isControlsOpen && (
+          <div
+            className="fixed inset-0 z-[-1]"
+            onClick={() => setIsControlsOpen(false)}
+            aria-hidden="true"
+          />
+        )}
 
-        {/* Retractable Action Buttons Group */}
-        <div
-          className={`flex flex-col gap-2 transition-all duration-200 ${
-            isControlsOpen ? 'flex animate-in fade-in slide-in-from-top-2' : 'hidden md:flex'
-          }`}
-        >
-          <button
-            onClick={toggleDangerRadius}
-            className={`p-2.5 rounded-xl border backdrop-blur-md shadow-xl transition flex items-center gap-2 text-xs font-medium ${
-              showDangerRadius
-                ? 'bg-dark-900/90 border-rose-500/50 text-rose-400'
-                : 'bg-dark-900/70 border-dark-700 text-slate-400 hover:text-white'
-            }`}
-            title={t.map.togglePerimetersTitle}
-          >
-            <Layers className="w-4 h-4" />
-            <span>{t.map.perimeters}</span>
-          </button>
+        {/* Action Buttons Group (Unfolds upwards, merges on click) */}
+        {isControlsOpen ? (
+          <div className="flex flex-col gap-2 p-2 rounded-2xl bg-dark-900/98 border border-dark-700 shadow-2xl backdrop-blur-xl animate-in zoom-in-95 slide-in-from-bottom-2 duration-150 min-w-[180px]">
+            {/* Header / Close tool button */}
+            <button
+              onClick={() => setIsControlsOpen(false)}
+              className="p-1.5 px-2.5 rounded-xl bg-dark-950/80 hover:bg-dark-800 text-slate-400 hover:text-white text-[11px] font-mono flex items-center justify-between border border-dark-800 transition cursor-pointer"
+            >
+              <span>Fermer</span>
+              <X className="w-3.5 h-3.5 text-rose-400" />
+            </button>
 
-          <button
-            onClick={toggleTransports}
-            className={`p-2.5 rounded-xl border backdrop-blur-md shadow-xl transition flex items-center gap-2 text-xs font-medium ${
-              showTransports
-                ? 'bg-dark-900/90 border-indigo-500/50 text-indigo-400'
-                : 'bg-dark-900/70 border-dark-700 text-slate-400 hover:text-white'
-            }`}
-            title={t.map.toggleRatpTitle}
-          >
-            <Train className="w-4 h-4" />
-            <span>RATP Hubs</span>
-          </button>
+            {/* 1. Périmètres de Danger */}
+            <button
+              onClick={() => {
+                toggleDangerRadius();
+                setIsControlsOpen(false); // SE MERGE APRÈS UTILISATION
+              }}
+              className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2.5 text-xs font-medium cursor-pointer active:scale-95 ${
+                showDangerRadius
+                  ? 'bg-rose-950/40 border-rose-500/50 text-rose-400'
+                  : 'bg-dark-850/80 border-dark-700 text-slate-400 hover:text-white'
+              }`}
+              title={t.map.togglePerimetersTitle}
+            >
+              <div className="flex items-center gap-2">
+                <Layers className="w-4 h-4" />
+                <span>{t.map.perimeters}</span>
+              </div>
+              <span className={`w-2 h-2 rounded-full ${showDangerRadius ? 'bg-rose-500 animate-pulse' : 'bg-slate-600'}`} />
+            </button>
 
+            {/* 2. RATP Hubs */}
+            <button
+              onClick={() => {
+                toggleTransports();
+                toggleTransportWidget();
+                setIsControlsOpen(false); // SE MERGE APRÈS UTILISATION
+              }}
+              className="p-2.5 rounded-xl border border-indigo-500/40 bg-indigo-950/30 text-indigo-300 hover:text-white hover:bg-indigo-950/50 transition-all flex items-center gap-2.5 text-xs font-medium cursor-pointer active:scale-95"
+              title={t.map.toggleRatpTitle}
+            >
+              <Train className="w-4 h-4 text-indigo-400" />
+              <span>RATP Hubs</span>
+            </button>
+
+            {/* 3. Centrer Paris */}
+            <button
+              onClick={() => {
+                flyTo(48.8566, 2.3522, 13);
+                setIsControlsOpen(false); // SE MERGE APRÈS UTILISATION
+              }}
+              className="p-2.5 rounded-xl border border-dark-700 bg-dark-850/80 hover:bg-dark-800 text-slate-200 hover:text-white transition-all flex items-center gap-2.5 text-xs font-medium cursor-pointer active:scale-95"
+              title={t.map.recenterTitle}
+            >
+              <Navigation className="w-4 h-4 text-pulse-accent" />
+              <span>{t.map.recenter}</span>
+            </button>
+          </div>
+        ) : (
+          /* Bouton Unique Mergé (Single Merged FAB Button) */
           <button
-            onClick={() => flyTo(48.8566, 2.3522, 13)}
-            className="p-2.5 rounded-xl border border-dark-700 bg-dark-900/80 backdrop-blur-md text-slate-300 hover:text-white shadow-xl transition flex items-center gap-2 text-xs font-medium"
-            title={t.map.recenterTitle}
+            onClick={() => setIsControlsOpen(true)}
+            className="p-2.5 sm:px-3.5 sm:py-2.5 rounded-2xl bg-dark-900/95 border border-dark-700/80 hover:border-dark-600 text-slate-200 hover:text-white shadow-2xl backdrop-blur-xl flex items-center gap-2 text-xs font-semibold font-mono transition-all duration-200 active:scale-95 cursor-pointer group"
+            title="Options et outils de la carte (Périmètres, RATP, Centrer)"
           >
-            <Navigation className="w-4 h-4" />
-            <span>{t.map.recenter}</span>
+            <SlidersHorizontal className="w-4 h-4 text-pulse-accent group-hover:rotate-45 transition-transform" />
+            <span className="hidden sm:inline">Outils Carte</span>
           </button>
-        </div>
+        )}
       </div>
 
       {/* Floating Map Legend (Bottom Left) - Hidden on Mobile (< sm) and when Modal is Open */}

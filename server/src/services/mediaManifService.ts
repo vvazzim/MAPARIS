@@ -196,7 +196,7 @@ export class MediaManifService {
           severity: mapping.severity,
           category: mapping.category,
           description: mapping.description,
-          source: 'MediaManif Citoyen (mediamanif.org)',
+          source: `MediaManif #${pt.id} (mediamanif.org)`,
           ttlSeconds: remainingTtlSec,
         });
 
@@ -219,7 +219,8 @@ export class MediaManifService {
         clusteredMerged += mergedCount;
       }
 
-      // Nettoyage strict 2h : tout signalement MediaManif de plus de 2 heures sans nouveau signalement est supprimé
+      // 6. RÈGLE STRICTE : Si un point MediaManif a disparu du flux MediaManif OU dépasse 2 heures -> SUPPRIMÉ IMMÉDIATEMENT !
+      const liveMediaManifIds = new Set(rawPoints.map((p) => String(p.id)));
       const allIncidents = await incidentRepository.getAll({ limit: 1000 });
       const nowMs = Date.now();
       const twoHoursMs = 2 * 3600 * 1000;
@@ -227,13 +228,23 @@ export class MediaManifService {
 
       for (const inc of allIncidents) {
         if (inc.source && inc.source.includes('MediaManif')) {
+          const idMatch = inc.source.match(/MediaManif\s*#(\d+)/i);
+          const mmId = idMatch ? idMatch[1] : null;
+
+          // Disparu du nouveau fetch OU plus de 2 heures écoulées
+          const isDisappearedFromMediaManif = mmId ? !liveMediaManifIds.has(mmId) : false;
           const ageMs = nowMs - new Date(inc.created_at).getTime();
-          const isExpired = new Date(inc.expires_at).getTime() <= nowMs || ageMs >= twoHoursMs;
-          if (isExpired) {
+          const isOverTwoHours = ageMs >= twoHoursMs || new Date(inc.expires_at).getTime() <= nowMs;
+
+          if (isDisappearedFromMediaManif || isOverTwoHours) {
             await incidentRepository.deleteById(inc.id);
             broadcastIncidentExpired(inc.id);
             expiredMediaManifCount++;
-            console.log(`🧹 [MediaManif TTL 2h] Signalement retiré (${inc.id} - ${inc.location_name}) : plus de 2 heures écoulées.`);
+            console.log(
+              `🧹 [MediaManif Sync] Signalement [${inc.id}] retiré (${
+                isDisappearedFromMediaManif ? 'disparu du flux MediaManif' : 'durée > 2h dépassée'
+              })`
+            );
           }
         }
       }
@@ -278,7 +289,7 @@ export class MediaManifService {
     this.isPollingActive = true;
     const intervalMs = intervalMinutes * 60 * 1000;
 
-    console.log(`🤖 [MediaManif Cron] Tâche automatisée activée (toutes les ${intervalMinutes}h)`);
+    console.log(`🤖 [MediaManif Cron] Tâche automatisée activée (toutes les ${intervalMinutes} min)`);
 
     // Première synchronisation différée de 5 secondes après le démarrage du serveur
     setTimeout(() => {

@@ -23,6 +23,7 @@ export const Header: React.FC = () => {
     openSafeRouteModal,
     isMobileMenuOpen,
     toggleMobileMenu,
+    setMobileActiveTab,
     language,
     setLanguage,
     t,
@@ -86,7 +87,11 @@ export const Header: React.FC = () => {
       <div className="flex items-center space-x-2 sm:space-x-3">
         {/* Safe Routing CTA */}
         <button
-          onClick={openSafeRouteModal}
+          onClick={() => {
+            setMobileActiveTab('map');
+            if (showTransportWidget) toggleTransportWidget();
+            openSafeRouteModal();
+          }}
           className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/50 hover:bg-emerald-900/70 text-emerald-300 text-xs font-semibold shadow-md transition active:scale-95 cursor-pointer"
           title="Calculer un itinéraire piéton sécurisé"
         >
@@ -96,7 +101,11 @@ export const Header: React.FC = () => {
 
         {/* Quick Report CTA (Bouton Principal en évidence) */}
         <button
-          onClick={openReportModal}
+          onClick={() => {
+            setMobileActiveTab('map');
+            if (showTransportWidget) toggleTransportWidget();
+            openReportModal();
+          }}
           className="hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950/80 border border-rose-400/30 transition active:scale-95 cursor-pointer"
           title="Diffuser une alerte citoyenne"
         >

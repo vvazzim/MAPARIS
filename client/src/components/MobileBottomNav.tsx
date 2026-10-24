@@ -58,7 +58,10 @@ export const MobileBottomNav: React.FC = () => {
       {/* Primary Action: Signaler (Center Button) */}
       <div className="flex flex-col items-center justify-center px-1 -mt-4">
         <button
-          onClick={openReportModal}
+          onClick={() => {
+            setMobileActiveTab('map');
+            openReportModal();
+          }}
           className="w-12 h-12 rounded-full bg-gradient-to-tr from-rose-600 to-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-950/80 border-2 border-dark-900 hover:scale-105 active:scale-95 transition"
           title={t.mobile.reportAction}
         >
@@ -69,7 +72,10 @@ export const MobileBottomNav: React.FC = () => {
 
       {/* Action: Itinéraire Safe */}
       <button
-        onClick={openSafeRouteModal}
+        onClick={() => {
+          setMobileActiveTab('map');
+          openSafeRouteModal();
+        }}
         className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-emerald-400 transition"
       >
         <Compass className="w-5 h-5 mb-0.5" />

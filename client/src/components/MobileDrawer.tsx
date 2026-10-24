@@ -29,6 +29,7 @@ export const MobileDrawer: React.FC = () => {
     connectionStatus,
     openReportModal,
     openSafeRouteModal,
+    showTransportWidget,
     toggleTransportWidget,
     toggleDangerRadius,
     toggleTransports,
@@ -162,7 +163,12 @@ export const MobileDrawer: React.FC = () => {
                 
                 {/* Signaler */}
                 <button
-                  onClick={openReportModal}
+                  onClick={() => {
+                    closeMobileMenu();
+                    setMobileActiveTab('map');
+                    if (showTransportWidget) toggleTransportWidget();
+                    openReportModal();
+                  }}
                   className="w-full p-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm flex items-center justify-between shadow-lg shadow-rose-950/50 transition active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
@@ -177,7 +183,12 @@ export const MobileDrawer: React.FC = () => {
 
                 {/* Itinéraire Safe */}
                 <button
-                  onClick={openSafeRouteModal}
+                  onClick={() => {
+                    closeMobileMenu();
+                    setMobileActiveTab('map');
+                    if (showTransportWidget) toggleTransportWidget();
+                    openSafeRouteModal();
+                  }}
                   className="w-full p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
@@ -194,6 +205,7 @@ export const MobileDrawer: React.FC = () => {
                 <button
                   onClick={() => {
                     closeMobileMenu();
+                    setMobileActiveTab('map');
                     toggleTransportWidget();
                   }}
                   className="w-full p-3.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 hover:bg-indigo-900/60 text-indigo-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
@@ -287,6 +299,7 @@ export const MobileDrawer: React.FC = () => {
                 <button
                   onClick={() => {
                     closeMobileMenu();
+                    setMobileActiveTab('map');
                     flyTo(48.8566, 2.3522, 13);
                   }}
                   className="w-full p-3 rounded-xl bg-dark-800/80 border border-dark-700 hover:bg-dark-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99]"
