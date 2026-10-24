@@ -134,14 +134,14 @@ export class OSINTIngestionService {
     // Géocodage automatique via BAN
     const geo = await geocodingService.geocodeAddress(location);
 
-    // Enregistrement de l'incident
+    // Enregistrement de l'incident (description concise limitée à 160 caractères)
     const incident = await incidentRepository.create({
       lat: geo.lat,
       lng: geo.lng,
       location_name: geo.label,
       severity,
       category,
-      description: message.text,
+      description: message.text.slice(0, 160),
       source: `${message.source} (${message.author})`,
     });
 

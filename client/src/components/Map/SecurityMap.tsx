@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { PARIS_TRANSPORT_HUBS } from '../../data/ratpHubs';
@@ -17,7 +17,8 @@ import {
   ShieldCheck, 
   Clock,
   Users,
-  X
+  X,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 // Custom Map Controller to smoothly pan/zoom and resize
@@ -149,6 +150,7 @@ const createRoutePinIcon = (type: 'origin' | 'destination') => {
 };
 
 export const SecurityMap: React.FC = () => {
+  const [isControlsOpen, setIsControlsOpen] = useState(false);
   const {
     incidents,
     setSelectedIncident,
@@ -160,6 +162,7 @@ export const SecurityMap: React.FC = () => {
     voteIncident,
     activeSafeRoute,
     clearSafeRoute,
+    t,
   } = useIncidentStore();
 
   return (
@@ -213,14 +216,14 @@ export const SecurityMap: React.FC = () => {
             }}
           >
             <Popup className="pulse-popup">
-              <div className="p-1 min-w-[250px] text-slate-100">
+              <div className="p-1 min-w-[240px] max-w-[280px] sm:max-w-[320px] text-slate-100">
                 <div className="flex items-center justify-between pb-2 border-b border-dark-700/80 mb-2">
                   <div className="flex items-center space-x-1.5">
                     {incident.severity === 'danger' && <AlertCircle className="w-4 h-4 text-rose-500" />}
                     {incident.severity === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
                     {incident.severity === 'safe' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                     <span className="text-xs uppercase font-bold tracking-wider font-mono">
-                      {incident.severity === 'danger' ? 'Danger Élevé' : incident.severity === 'warning' ? 'Tension' : 'Zone Sécurisée'}
+                      {incident.severity === 'danger' ? t.map.highDanger : incident.severity === 'warning' ? t.map.tension : t.map.safeZone}
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-slate-400">
@@ -232,10 +235,10 @@ export const SecurityMap: React.FC = () => {
                 <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-dark-900/90 px-2 py-1 rounded border border-dark-700/80 mb-2">
                   <span className="flex items-center gap-1 font-semibold text-amber-300">
                     <Users className="w-3 h-3 text-amber-400" />
-                    <span>{incident.reports_count && incident.reports_count > 1 ? `${incident.reports_count} signalements` : '1 signalement'}</span>
+                    <span>{incident.reports_count && incident.reports_count > 1 ? t.map.confirmedBadge.replace('{count}', String(incident.reports_count)) : t.map.oneSignal}</span>
                   </span>
                   {incident.expires_at && (
-                    <span className="flex items-center gap-1 text-slate-400" title={`Expire à ${new Date(incident.expires_at).toLocaleTimeString()}`}>
+                    <span className="flex items-center gap-1 text-slate-400" title={`${t.map.expiresAt} ${new Date(incident.expires_at).toLocaleTimeString()}`}>
                       <Clock className="w-3 h-3 text-cyan-400" />
                       <span>{new Date(incident.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </span>
@@ -246,7 +249,7 @@ export const SecurityMap: React.FC = () => {
                   {incident.location_name}
                 </h4>
 
-                <p className="text-xs text-slate-300 leading-snug mb-2.5">
+                <p className="text-xs text-slate-300 leading-snug line-clamp-3 mb-2.5 overflow-hidden text-ellipsis break-words">
                   {incident.description}
                 </p>
 
@@ -255,7 +258,7 @@ export const SecurityMap: React.FC = () => {
                   <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
                     <span className="flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                      <span>Fiabilité</span>
+                      <span>{t.map.reliability}</span>
                     </span>
                     <span className="font-bold text-slate-200">
                       {Math.round((incident.reliability_score ?? 0.5) * 100)}%
@@ -287,7 +290,7 @@ export const SecurityMap: React.FC = () => {
                         voteIncident(incident.id, 'up');
                       }}
                       className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-200 transition text-xs"
-                      title="Voter pour confirmer ce signalement (Upvote)"
+                      title={t.map.voteUpTitle}
                     >
                       <ThumbsUp className="w-3 h-3 text-emerald-400" />
                       <span className="font-mono font-bold text-[10px]">{incident.upvotes}</span>
@@ -299,7 +302,7 @@ export const SecurityMap: React.FC = () => {
                         voteIncident(incident.id, 'down');
                       }}
                       className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition text-xs"
-                      title="Contester ce signalement (Downvote)"
+                      title={t.map.voteDownTitle}
                     >
                       <ThumbsDown className="w-3 h-3 text-rose-400" />
                       {incident.downvotes !== undefined && incident.downvotes > 0 && (
@@ -337,7 +340,7 @@ export const SecurityMap: React.FC = () => {
                           : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                       }`}
                     >
-                      {station.status === 'closed' ? 'Fermée' : station.status === 'disrupted' ? 'Perturbée' : 'Normale'}
+                      {station.status === 'closed' ? t.transport.closed : station.status === 'disrupted' ? t.transport.disrupted : t.transport.normal}
                     </span>
                   </div>
 
@@ -389,7 +392,7 @@ export const SecurityMap: React.FC = () => {
             >
               <Popup>
                 <div className="p-1 text-xs">
-                  <span className="font-bold text-emerald-400">Départ :</span>
+                  <span className="font-bold text-emerald-400">{t.map.start}</span>
                   <p className="text-white mt-0.5">{activeSafeRoute.origin.address}</p>
                 </div>
               </Popup>
@@ -402,7 +405,7 @@ export const SecurityMap: React.FC = () => {
             >
               <Popup>
                 <div className="p-1 text-xs">
-                  <span className="font-bold text-rose-400">Arrivée :</span>
+                  <span className="font-bold text-rose-400">{t.map.end}</span>
                   <p className="text-white mt-0.5">{activeSafeRoute.destination.address}</p>
                 </div>
               </Popup>
@@ -419,9 +422,9 @@ export const SecurityMap: React.FC = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="font-bold text-white">Tracé Safe Actif</span>
+            <span className="font-bold text-white">{t.map.activeSafeRoute}</span>
             <span className="font-mono text-emerald-400 font-bold bg-emerald-950 px-1.5 py-0.5 rounded">
-              {activeSafeRoute.safetyScore}% Sûr
+              {t.map.safePercent.replace('{percent}', String(activeSafeRoute.safetyScore))}
             </span>
             <span className="text-slate-300">
               ({activeSafeRoute.safeDistanceKm} km · ~{activeSafeRoute.safeDurationMin} min)
@@ -431,72 +434,99 @@ export const SecurityMap: React.FC = () => {
           <button
             onClick={clearSafeRoute}
             className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-dark-800 transition"
-            title="Effacer l'itinéraire de la carte"
+            title={t.map.clearRouteTitle}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Floating Map Action Controls (Top Right) */}
-      <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
+      {/* Floating Map Action Controls (Top Right) - Retractable on Mobile */}
+      <div className="absolute top-4 right-3 sm:right-4 z-[400] flex flex-col items-end gap-2">
+        {/* Mobile Toggle Button (< md) */}
         <button
-          onClick={toggleDangerRadius}
-          className={`p-2.5 rounded-xl border backdrop-blur-md shadow-xl transition flex items-center gap-2 text-xs font-medium ${
-            showDangerRadius
-              ? 'bg-dark-900/90 border-rose-500/50 text-rose-400'
-              : 'bg-dark-900/70 border-dark-700 text-slate-400 hover:text-white'
-          }`}
-          title="Basculer l'affichage des périmètres de sécurité"
+          onClick={() => setIsControlsOpen((prev: boolean) => !prev)}
+          className="md:hidden p-2.5 rounded-xl border border-dark-700 bg-dark-900/95 backdrop-blur-md text-slate-300 hover:text-white shadow-xl transition active:scale-95 flex items-center gap-1.5 text-xs font-medium"
+          title="Outils carte"
+          aria-label="Contrôles de la carte"
         >
-          <Layers className="w-4 h-4" />
-          <span className="hidden sm:inline">Périmètres</span>
+          {isControlsOpen ? (
+            <>
+              <X className="w-4 h-4 text-rose-400" />
+              <span className="text-[11px] font-mono text-rose-400">Fermer</span>
+            </>
+          ) : (
+            <>
+              <SlidersHorizontal className="w-4 h-4 text-pulse-accent" />
+              <span className="text-[11px] font-mono text-slate-200">Outils</span>
+            </>
+          )}
         </button>
 
-        <button
-          onClick={toggleTransports}
-          className={`p-2.5 rounded-xl border backdrop-blur-md shadow-xl transition flex items-center gap-2 text-xs font-medium ${
-            showTransports
-              ? 'bg-dark-900/90 border-indigo-500/50 text-indigo-400'
-              : 'bg-dark-900/70 border-dark-700 text-slate-400 hover:text-white'
+        {/* Retractable Action Buttons Group */}
+        <div
+          className={`flex flex-col gap-2 transition-all duration-200 ${
+            isControlsOpen ? 'flex animate-in fade-in slide-in-from-top-2' : 'hidden md:flex'
           }`}
-          title="Basculer l'affichage des stations de métro RATP"
         >
-          <Train className="w-4 h-4" />
-          <span className="hidden sm:inline">RATP Hubs</span>
-        </button>
+          <button
+            onClick={toggleDangerRadius}
+            className={`p-2.5 rounded-xl border backdrop-blur-md shadow-xl transition flex items-center gap-2 text-xs font-medium ${
+              showDangerRadius
+                ? 'bg-dark-900/90 border-rose-500/50 text-rose-400'
+                : 'bg-dark-900/70 border-dark-700 text-slate-400 hover:text-white'
+            }`}
+            title={t.map.togglePerimetersTitle}
+          >
+            <Layers className="w-4 h-4" />
+            <span>{t.map.perimeters}</span>
+          </button>
 
-        <button
-          onClick={() => flyTo(48.8566, 2.3522, 13)}
-          className="p-2.5 rounded-xl border border-dark-700 bg-dark-900/80 backdrop-blur-md text-slate-300 hover:text-white shadow-xl transition flex items-center gap-2 text-xs font-medium"
-          title="Recentrer la carte sur Paris"
-        >
-          <Navigation className="w-4 h-4" />
-          <span className="hidden sm:inline">Centrer Paris</span>
-        </button>
+          <button
+            onClick={toggleTransports}
+            className={`p-2.5 rounded-xl border backdrop-blur-md shadow-xl transition flex items-center gap-2 text-xs font-medium ${
+              showTransports
+                ? 'bg-dark-900/90 border-indigo-500/50 text-indigo-400'
+                : 'bg-dark-900/70 border-dark-700 text-slate-400 hover:text-white'
+            }`}
+            title={t.map.toggleRatpTitle}
+          >
+            <Train className="w-4 h-4" />
+            <span>RATP Hubs</span>
+          </button>
+
+          <button
+            onClick={() => flyTo(48.8566, 2.3522, 13)}
+            className="p-2.5 rounded-xl border border-dark-700 bg-dark-900/80 backdrop-blur-md text-slate-300 hover:text-white shadow-xl transition flex items-center gap-2 text-xs font-medium"
+            title={t.map.recenterTitle}
+          >
+            <Navigation className="w-4 h-4" />
+            <span>{t.map.recenter}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Floating Map Legend (Bottom Left) */}
-      <div className="absolute bottom-6 left-6 z-[400] bg-dark-900/90 border border-dark-800 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl text-[11px] text-slate-300 flex items-center gap-4">
+      {/* Floating Map Legend (Bottom Left) - Hidden on Mobile (< sm) */}
+      <div className="hidden sm:flex absolute bottom-6 left-6 z-[400] bg-dark-900/90 border border-dark-800 backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl text-[11px] text-slate-300 items-center gap-4">
         <div className="flex items-center gap-1.5 font-medium">
           <Shield className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-slate-400 font-mono text-[10px] uppercase">Légende :</span>
+          <span className="text-slate-400 font-mono text-[10px] uppercase">{t.map.legend}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50 animate-pulse" />
-          <span>Danger</span>
+          <span>{t.map.danger}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50" />
-          <span>Tension</span>
+          <span>{t.map.warning}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
-          <span>Safe</span>
+          <span>{t.map.safe}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
-          <span>Hub RATP</span>
+          <span>{t.map.ratp}</span>
         </div>
       </div>
     </div>

@@ -28,7 +28,8 @@ export const IncidentFeed: React.FC = () => {
     openReportModal, 
     voteIncident,
     mobileActiveTab,
-    setMobileActiveTab
+    setMobileActiveTab,
+    t,
   } = useIncidentStore();
 
   const [searchFilter, setSearchFilter] = useState('');
@@ -55,21 +56,21 @@ export const IncidentFeed: React.FC = () => {
         return (
           <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/30">
             <AlertCircle className="w-3 h-3" />
-            <span>Danger</span>
+            <span>{t.feed.filterDanger}</span>
           </span>
         );
       case 'warning':
         return (
           <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
             <AlertTriangle className="w-3 h-3" />
-            <span>Tension</span>
+            <span>{t.feed.filterWarning}</span>
           </span>
         );
       case 'safe':
         return (
           <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
             <CheckCircle className="w-3 h-3" />
-            <span>Zone Safe</span>
+            <span>{t.feed.filterSafe}</span>
           </span>
         );
     }
@@ -96,16 +97,16 @@ export const IncidentFeed: React.FC = () => {
       <div className="p-4 border-b border-dark-800 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Activity className="w-4 h-4 text-pulse-accent animate-pulse" />
-          <h2 className="font-semibold text-sm text-slate-100">Flux d'Incidents en Direct</h2>
+          <h2 className="font-semibold text-sm text-slate-100">{t.feed.title}</h2>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono px-2 py-0.5 rounded bg-dark-800 text-slate-400">
-            {filteredIncidents.length} signalements
+            {t.feed.reportsCount.replace('{count}', String(filteredIncidents.length))}
           </span>
           <button 
             onClick={() => setMobileActiveTab('map')}
             className="lg:hidden p-1.5 rounded-lg bg-dark-800 text-slate-300 hover:text-white"
-            title="Revenir à la carte"
+            title={t.feed.backToMap}
           >
             <MapIcon className="w-4 h-4 text-pulse-accent" />
           </button>
@@ -119,7 +120,7 @@ export const IncidentFeed: React.FC = () => {
           className="w-full py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center justify-center space-x-2 transition shadow-lg shadow-rose-950/60 active:scale-[0.98]"
         >
           <PlusCircle className="w-4 h-4" />
-          <span>Signaler un événement / tension</span>
+          <span>{t.feed.reportButton}</span>
         </button>
       </div>
 
@@ -130,7 +131,7 @@ export const IncidentFeed: React.FC = () => {
             type="text"
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
-            placeholder="Filtrer par rue, station, mot-clé..."
+            placeholder={t.feed.searchPlaceholder}
             className="w-full pl-8 pr-3 py-1.5 bg-dark-950 border border-dark-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-dark-700 transition"
           />
           <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
@@ -147,7 +148,13 @@ export const IncidentFeed: React.FC = () => {
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              {sev === 'all' ? 'Tous' : sev}
+              {sev === 'all'
+                ? t.feed.filterAll
+                : sev === 'danger'
+                ? t.feed.filterDanger
+                : sev === 'warning'
+                ? t.feed.filterWarning
+                : t.feed.filterSafe}
             </button>
           ))}
         </div>
@@ -158,10 +165,7 @@ export const IncidentFeed: React.FC = () => {
         {filteredIncidents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center p-6 text-slate-500">
             <Activity className="w-8 h-8 stroke-1 mb-2 opacity-50" />
-            <p className="text-xs font-medium">Aucun incident correspondant</p>
-            <p className="text-[11px] text-slate-600 mt-1">
-              Modifiez vos filtres ou signalez le premier événement via le bouton ci-dessus.
-            </p>
+            <p className="text-xs font-medium">{t.feed.empty}</p>
           </div>
         ) : (
           filteredIncidents.map((incident) => {
@@ -223,7 +227,7 @@ export const IncidentFeed: React.FC = () => {
                       ) : (
                         <ShieldAlert className="w-3 h-3 text-amber-400" />
                       )}
-                      <span>Indice de Fiabilité</span>
+                      <span>{t.feed.reliability}</span>
                     </span>
                     <span className="font-bold text-slate-200">{percent}%</span>
                   </div>
@@ -251,7 +255,7 @@ export const IncidentFeed: React.FC = () => {
                         voteIncident(incident.id, 'up');
                       }}
                       className="flex items-center space-x-1 px-2 py-0.5 rounded bg-dark-800 hover:bg-slate-700 text-slate-200 transition"
-                      title="Confirmer cette alerte (Upvote)"
+                      title={t.feed.voteConfirm}
                     >
                       <ThumbsUp className="w-3 h-3 text-emerald-400" />
                       <span className="font-mono font-bold text-[10px]">{incident.upvotes}</span>
@@ -263,7 +267,7 @@ export const IncidentFeed: React.FC = () => {
                         voteIncident(incident.id, 'down');
                       }}
                       className="flex items-center space-x-1 px-2 py-0.5 rounded bg-dark-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition"
-                      title="Contester cette alerte (Downvote)"
+                      title={t.feed.voteDispute}
                     >
                       <ThumbsDown className="w-3 h-3 text-rose-400" />
                       {incident.downvotes !== undefined && incident.downvotes > 0 && (

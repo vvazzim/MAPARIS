@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Incident, FilterOptions, SafeRouteResult } from '../types';
 import { safeFetchJson } from '../services/api';
+import { detectDefaultLanguage, Language, translations } from '../i18n/translations';
 
 interface IncidentState {
   incidents: Incident[];
@@ -9,6 +10,12 @@ interface IncidentState {
   connectionStatus: 'connected' | 'reconnecting' | 'disconnected';
   filters: FilterOptions;
   
+  // Internationalization i18n
+  language: Language;
+  t: typeof translations['fr'];
+  setLanguage: (lang: Language) => void;
+  toggleLanguage: () => void;
+
   // Modals & Drawers
   isReportModalOpen: boolean;
   isSafeRouteModalOpen: boolean;
@@ -49,25 +56,39 @@ interface IncidentState {
   voteIncident: (id: string, type: 'up' | 'down') => Promise<void>;
 }
 
-export const useIncidentStore = create<IncidentState>((set, get) => ({
-  incidents: [],
-  selectedIncident: null,
-  isConnected: false,
-  connectionStatus: 'connecting' as any,
-  filters: {
-    severity: 'all',
-    minUpvotes: 0,
-    searchQuery: '',
-  },
-  isReportModalOpen: false,
-  isSafeRouteModalOpen: false,
-  showTransportWidget: false,
-  isMobileMenuOpen: false,
-  mobileActiveTab: 'map',
-  flyTarget: null,
-  showDangerRadius: true,
-  showTransports: true,
-  activeSafeRoute: null,
+export const useIncidentStore = create<IncidentState>((set, get) => {
+  const initialLang = detectDefaultLanguage();
+
+  return {
+    incidents: [],
+    selectedIncident: null,
+    isConnected: false,
+    connectionStatus: 'connecting' as any,
+    filters: {
+      severity: 'all',
+      minUpvotes: 0,
+      searchQuery: '',
+    },
+    language: initialLang,
+    t: translations[initialLang],
+    setLanguage: (lang: Language) => {
+      localStorage.setItem('maparis_lang', lang);
+      set({ language: lang, t: translations[lang] });
+    },
+    toggleLanguage: () => {
+      const next: Language = get().language === 'fr' ? 'en' : 'fr';
+      localStorage.setItem('maparis_lang', next);
+      set({ language: next, t: translations[next] });
+    },
+    isReportModalOpen: false,
+    isSafeRouteModalOpen: false,
+    showTransportWidget: false,
+    isMobileMenuOpen: false,
+    mobileActiveTab: 'map',
+    flyTarget: null,
+    showDangerRadius: true,
+    showTransports: true,
+    activeSafeRoute: null,
 
   setIncidents: (incidents) => set({ incidents }),
   
@@ -148,4 +169,5 @@ export const useIncidentStore = create<IncidentState>((set, get) => ({
       console.error(`Erreur vote ${type}:`, err);
     }
   },
-}));
+};
+});

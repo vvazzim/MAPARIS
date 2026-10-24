@@ -199,4 +199,34 @@ export const incidentRoutes: FastifyPluginAsync = async (fastify) => {
 
     return reply.send({ success: true, data: updated, resolved: updated.resolved });
   });
+
+  /**
+   * DELETE /api/incidents/:id
+   * Supprime manuellement un faux signalement
+   */
+  fastify.delete<{ Params: { id: string } }>('/api/incidents/:id', async (request, reply) => {
+    const deleted = await incidentRepository.deleteById(request.params.id);
+    broadcastIncidentExpired(request.params.id);
+    return reply.send({ success: true, deleted, id: request.params.id });
+  });
+
+  /**
+   * POST /api/incidents/purge-obsolete
+   * Purge automatique de tous les signalements de janvier ou textes excessifs
+   */
+  fastify.post('/api/incidents/purge-obsolete', async (request, reply) => {
+    const purgedIds = await incidentRepository.purgeObsoleteIncidents();
+    purgedIds.forEach((id) => broadcastIncidentExpired(id));
+    return reply.send({ success: true, count: purgedIds.length, purgedIds });
+  });
+
+  /**
+   * POST /api/incidents/clear-all
+   * Remise à zéro complète de la carte
+   */
+  fastify.post('/api/incidents/clear-all', async (request, reply) => {
+    const allIds = await incidentRepository.clearAll();
+    allIds.forEach((id) => broadcastIncidentExpired(id));
+    return reply.send({ success: true, count: allIds.length, cleared: true });
+  });
 };

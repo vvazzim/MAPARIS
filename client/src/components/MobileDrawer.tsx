@@ -15,7 +15,8 @@ import {
   WifiOff,
   Loader2,
   Lock,
-  List
+  List,
+  Globe
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
@@ -35,6 +36,9 @@ export const MobileDrawer: React.FC = () => {
     showTransports,
     flyTo,
     setMobileActiveTab,
+    language,
+    toggleLanguage,
+    t,
   } = useIncidentStore();
 
   const [simulating, setSimulating] = useState(false);
@@ -77,14 +81,14 @@ export const MobileDrawer: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-white text-base">Paris Security Pulse</h3>
-                <p className="text-[11px] text-slate-400 font-mono">Menu & Navigation Rapide</p>
+                <p className="text-[11px] text-slate-400 font-mono">{t.mobile.menuTitle}</p>
               </div>
             </div>
 
             <button 
               onClick={closeMobileMenu}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-dark-800 transition"
-              title="Fermer le menu"
+              title="Fermer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -93,10 +97,27 @@ export const MobileDrawer: React.FC = () => {
           {/* Content */}
           <div className="p-5 space-y-6 flex-1">
             
+            {/* Language Switcher Bar */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-dark-850 border border-dark-800">
+              <div className="flex items-center gap-2 text-xs text-slate-300">
+                <Globe className="w-4 h-4 text-pulse-accent" />
+                <span>Langue / Language</span>
+              </div>
+              <button
+                onClick={toggleLanguage}
+                className="px-2.5 py-1 rounded-lg bg-dark-900 border border-dark-700 text-xs font-mono font-bold text-white hover:border-pulse-accent transition flex items-center gap-1.5"
+              >
+                <span>{language === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN'}</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  ({language === 'fr' ? 'Passer en EN' : 'Switch to FR'})
+                </span>
+              </button>
+            </div>
+
             {/* Live Metrics Cards */}
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
-                Situation en direct à Paris
+                {t.mobile.liveSituation}
               </span>
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center">
@@ -104,7 +125,7 @@ export const MobileDrawer: React.FC = () => {
                     <AlertCircle className="w-4 h-4" />
                   </div>
                   <span className="text-lg font-bold font-mono text-red-400 block">{dangerCount}</span>
-                  <span className="text-[10px] text-red-300 font-medium">Dangers</span>
+                  <span className="text-[10px] text-red-300 font-medium">{t.mobile.dangers}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center">
@@ -112,7 +133,7 @@ export const MobileDrawer: React.FC = () => {
                     <AlertTriangle className="w-4 h-4" />
                   </div>
                   <span className="text-lg font-bold font-mono text-amber-400 block">{warningCount}</span>
-                  <span className="text-[10px] text-amber-300 font-medium">Tensions</span>
+                  <span className="text-[10px] text-amber-300 font-medium">{t.mobile.warnings}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center">
@@ -120,7 +141,7 @@ export const MobileDrawer: React.FC = () => {
                     <CheckCircle className="w-4 h-4" />
                   </div>
                   <span className="text-lg font-bold font-mono text-emerald-400 block">{safeCount}</span>
-                  <span className="text-[10px] text-emerald-300 font-medium">Zones Sûres</span>
+                  <span className="text-[10px] text-emerald-300 font-medium">{t.mobile.safeZones}</span>
                 </div>
               </div>
             </div>
@@ -128,7 +149,7 @@ export const MobileDrawer: React.FC = () => {
             {/* Quick Actions */}
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
-                Actions Principales
+                {t.mobile.mainActions}
               </span>
               <div className="space-y-2.5">
                 
@@ -140,8 +161,8 @@ export const MobileDrawer: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <PlusCircle className="w-5 h-5 text-white" />
                     <div className="text-left">
-                      <div>Signaler un incident</div>
-                      <div className="text-[10px] text-rose-200 font-normal">Crowdsourcing citoyen anonyme</div>
+                      <div>{t.mobile.reportAction}</div>
+                      <div className="text-[10px] text-rose-200 font-normal">{t.mobile.reportDesc}</div>
                     </div>
                   </div>
                   <span className="text-xs bg-rose-700 px-2 py-0.5 rounded font-mono">POST</span>
@@ -155,8 +176,8 @@ export const MobileDrawer: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <Compass className="w-5 h-5 text-emerald-400" />
                     <div className="text-left">
-                      <div>Itinéraire Safe Piéton</div>
-                      <div className="text-[10px] text-emerald-300/80 font-normal">Contournement automatique des zones rouges</div>
+                      <div>{t.mobile.safeRouteAction}</div>
+                      <div className="text-[10px] text-emerald-300/80 font-normal">{t.mobile.safeRouteDesc}</div>
                     </div>
                   </div>
                   <span className="text-xs bg-emerald-900/80 text-emerald-300 px-2 py-0.5 rounded font-mono">MAP</span>
@@ -173,17 +194,17 @@ export const MobileDrawer: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <Train className="w-5 h-5 text-indigo-400" />
                     <div className="text-left">
-                      <div>Statut Hubs RATP</div>
-                      <div className="text-[10px] text-indigo-300/80 font-normal">Châtelet, Bastille, République, etc.</div>
+                      <div>{t.mobile.ratpAction}</div>
+                      <div className="text-[10px] text-indigo-300/80 font-normal">{t.mobile.ratpDesc}</div>
                     </div>
                   </div>
                   {disruptedStations > 0 ? (
                     <span className="text-xs bg-rose-600 text-white font-mono font-bold px-2 py-0.5 rounded-full">
-                      {disruptedStations} perturbées
+                      {disruptedStations}
                     </span>
                   ) : (
                     <span className="text-xs bg-emerald-900 text-emerald-300 font-mono px-2 py-0.5 rounded">
-                      Normal
+                      {t.transport.normal}
                     </span>
                   )}
                 </button>
@@ -199,8 +220,8 @@ export const MobileDrawer: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <List className="w-5 h-5 text-pulse-accent" />
                     <div className="text-left">
-                      <div>Consulter le Flux d'Alertes</div>
-                      <div className="text-[10px] text-slate-400 font-normal">Tous les signalements horodatés</div>
+                      <div>{t.mobile.viewAlertsAction}</div>
+                      <div className="text-[10px] text-slate-400 font-normal">{t.mobile.viewAlertsDesc}</div>
                     </div>
                   </div>
                   <span className="text-xs bg-dark-700 text-slate-300 px-2 py-0.5 rounded font-mono">
@@ -221,8 +242,8 @@ export const MobileDrawer: React.FC = () => {
                       <Radio className="w-5 h-5 text-purple-400 animate-pulse" />
                     )}
                     <div className="text-left">
-                      <div>Simuler Alerte OSINT</div>
-                      <div className="text-[10px] text-purple-300/80 font-normal">Injecter un flux Telegram / Twitter</div>
+                      <div>{t.mobile.simulateOsintAction}</div>
+                      <div className="text-[10px] text-purple-300/80 font-normal">{t.mobile.simulateOsintDesc}</div>
                     </div>
                   </div>
                   <span className="text-xs bg-purple-900 text-purple-300 px-2 py-0.5 rounded font-mono">BOT</span>
@@ -233,7 +254,7 @@ export const MobileDrawer: React.FC = () => {
             {/* Cartographie Controls */}
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
-                Affichage Cartographique
+                {t.mobile.mapControls}
               </span>
               <div className="space-y-2">
                 <button
@@ -246,9 +267,9 @@ export const MobileDrawer: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4" />
-                    <span>Périmètres de Sécurité (Cercles)</span>
+                    <span>{t.mobile.dangerCircles}</span>
                   </div>
-                  <span className="font-mono">{showDangerRadius ? 'ACTIVÉ' : 'DÉSACTIVÉ'}</span>
+                  <span className="font-mono">{showDangerRadius ? t.mobile.enabled : t.mobile.disabled}</span>
                 </button>
 
                 <button
@@ -261,9 +282,9 @@ export const MobileDrawer: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Train className="w-4 h-4" />
-                    <span>Marqueurs Stations RATP</span>
+                    <span>{t.mobile.ratpMarkers}</span>
                   </div>
-                  <span className="font-mono">{showTransports ? 'ACTIVÉ' : 'DÉSACTIVÉ'}</span>
+                  <span className="font-mono">{showTransports ? t.mobile.enabled : t.mobile.disabled}</span>
                 </button>
 
                 <button
@@ -274,7 +295,7 @@ export const MobileDrawer: React.FC = () => {
                   className="w-full p-2.5 rounded-xl bg-dark-800/80 border border-dark-700 hover:bg-dark-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-2 transition"
                 >
                   <Navigation className="w-4 h-4 text-pulse-accent" />
-                  <span>Recentrer la Carte sur Paris</span>
+                  <span>{t.mobile.recenterParis}</span>
                 </button>
               </div>
             </div>
@@ -285,7 +306,7 @@ export const MobileDrawer: React.FC = () => {
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-slate-400 flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                <span>100% Anonyme · Zéro-Log</span>
+                <span>{t.mobile.anonymous}</span>
               </span>
 
               <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${
@@ -303,7 +324,7 @@ export const MobileDrawer: React.FC = () => {
                 ) : connectionStatus === 'reconnecting' ? (
                   <>
                     <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />
-                    <span>RÉVEIL</span>
+                    <span>{language === 'fr' ? 'RÉVEIL' : 'WAKING'}</span>
                   </>
                 ) : (
                   <>
@@ -316,14 +337,14 @@ export const MobileDrawer: React.FC = () => {
 
             {/* Author Credit */}
             <div className="pt-2 border-t border-dark-800/80 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400 font-mono">Projet Open Source</span>
+              <span className="text-slate-400 font-mono">{t.mobile.openSourceProject}</span>
               <a 
                 href="https://github.com/vvazzim/MAPARIS" 
                 target="_blank" 
                 rel="noreferrer"
                 className="hover:text-white transition flex items-center gap-1 text-slate-300 font-mono"
               >
-                <span>créé par</span>
+                <span>{t.mobile.openSourceCreatedBy}</span>
                 <span className="font-bold text-pulse-accent">@vvazzim</span>
               </a>
             </div>

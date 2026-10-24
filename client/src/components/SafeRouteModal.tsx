@@ -26,7 +26,8 @@ export const SafeRouteModal: React.FC = () => {
     isSafeRouteModalOpen, 
     closeSafeRouteModal, 
     setActiveSafeRoute, 
-    flyTo 
+    flyTo,
+    t,
   } = useIncidentStore();
 
   const [originText, setOriginText] = useState('Châtelet, Paris');
@@ -73,7 +74,7 @@ export const SafeRouteModal: React.FC = () => {
     const d = customDest || destText;
 
     if (!o.trim() || !d.trim()) {
-      setErrorMessage('Veuillez renseigner le point de départ et la destination.');
+      setErrorMessage(t.safeRouteModal.originRequiredError);
       return;
     }
 
@@ -91,12 +92,12 @@ export const SafeRouteModal: React.FC = () => {
       );
 
       if (!result.ok || !result.data?.success) {
-        throw new Error(result.error || result.data?.error || 'Erreur lors du calcul du trajet');
+        throw new Error(result.error || result.data?.error || t.safeRouteModal.computeError);
       }
 
       setRouteResult(result.data.data);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Impossible de calculer l\'itinéraire.');
+      setErrorMessage(err.message || t.safeRouteModal.computeError);
     } finally {
       setIsLoading(false);
     }
@@ -132,13 +133,13 @@ export const SafeRouteModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                Itinéraire Sécurisé (Safe Routing)
+                {t.safeRouteModal.title}
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800">
-                  Anti-Tension A*
+                  {t.safeRouteModal.badge}
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                Calcul de chemin piéton évitant les zones d'affrontements & gaz lacrymogènes
+                {t.safeRouteModal.subtitle}
               </p>
             </div>
           </div>
@@ -167,27 +168,27 @@ export const SafeRouteModal: React.FC = () => {
           {/* Quick Presets */}
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1.5">
-              Exemples de trajets à risque à contourner :
+              {t.safeRouteModal.presetsTitle}
             </span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => setPreset('Châtelet, Paris', 'Place de la République, Paris')}
-                className="px-2.5 py-1 rounded-lg bg-dark-850 hover:bg-dark-800 border border-dark-750 text-slate-300 text-[11px] transition"
+                className="px-2.5 py-1 rounded-lg bg-dark-850 hover:bg-dark-800 border border-dark-755 text-slate-300 text-[11px] transition"
               >
                 Châtelet ➔ République
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('Place de la Bastille, Paris', 'Place de la Concorde, Paris')}
-                className="px-2.5 py-1 rounded-lg bg-dark-850 hover:bg-dark-800 border border-dark-750 text-slate-300 text-[11px] transition"
+                className="px-2.5 py-1 rounded-lg bg-dark-850 hover:bg-dark-800 border border-dark-755 text-slate-300 text-[11px] transition"
               >
                 Bastille ➔ Concorde
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('Gare de Lyon, Paris', 'Gare du Nord, Paris')}
-                className="px-2.5 py-1 rounded-lg bg-dark-850 hover:bg-dark-800 border border-dark-750 text-slate-300 text-[11px] transition"
+                className="px-2.5 py-1 rounded-lg bg-dark-850 hover:bg-dark-800 border border-dark-755 text-slate-300 text-[11px] transition"
               >
                 Gare de Lyon ➔ Gare du Nord
               </button>
@@ -200,7 +201,7 @@ export const SafeRouteModal: React.FC = () => {
             <div className="relative">
               <label className="block text-[11px] font-medium text-slate-400 mb-1 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                <span>Point de Départ</span>
+                <span>{t.safeRouteModal.originLabel}</span>
               </label>
               <div className="relative">
                 <input
@@ -211,7 +212,7 @@ export const SafeRouteModal: React.FC = () => {
                     setShowOriginDrop(true);
                   }}
                   onFocus={() => originSuggestions.length > 0 && setShowOriginDrop(true)}
-                  placeholder="Ex: Châtelet, 10 rue de Rivoli..."
+                  placeholder={t.safeRouteModal.originPlaceholder}
                   className="w-full pl-9 pr-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
                 <MapPin className="w-4 h-4 text-emerald-400 absolute left-2.5 top-2.5" />
@@ -238,7 +239,7 @@ export const SafeRouteModal: React.FC = () => {
             <div className="relative">
               <label className="block text-[11px] font-medium text-slate-400 mb-1 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                <span>Destination d'Arrivée</span>
+                <span>{t.safeRouteModal.destinationLabel}</span>
               </label>
               <div className="relative">
                 <input
@@ -249,7 +250,7 @@ export const SafeRouteModal: React.FC = () => {
                     setShowDestDrop(true);
                   }}
                   onFocus={() => destSuggestions.length > 0 && setShowDestDrop(true)}
-                  placeholder="Ex: Place de la République, Gare Saint-Lazare..."
+                  placeholder={t.safeRouteModal.destinationPlaceholder}
                   className="w-full pl-9 pr-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
                 />
                 <Navigation className="w-4 h-4 text-rose-500 absolute left-2.5 top-2.5" />
@@ -281,12 +282,12 @@ export const SafeRouteModal: React.FC = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Analyse géométrique des obstacles...</span>
+                  <span>{t.safeRouteModal.computingAnalyzing}</span>
                 </>
               ) : (
                 <>
                   <Compass className="w-4 h-4" />
-                  <span>Calculer le Tracé Sécurisé</span>
+                  <span>{t.safeRouteModal.computeButton}</span>
                 </>
               )}
             </button>
@@ -298,7 +299,7 @@ export const SafeRouteModal: React.FC = () => {
               <div className="flex items-center justify-between pb-2 border-b border-dark-800">
                 <span className="text-xs font-bold text-white flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  Score de Sécurité du Parcours
+                  {t.safeRouteModal.scoreLabel}
                 </span>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                   {routeResult.safetyScore}% Safe
@@ -309,7 +310,7 @@ export const SafeRouteModal: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/40">
                   <div className="text-[10px] font-mono text-emerald-400 uppercase font-semibold mb-1">
-                    Tracé Sécurisé (Vert)
+                    {t.safeRouteModal.safePath}
                   </div>
                   <div className="flex items-center gap-3 font-mono text-white">
                     <span className="flex items-center gap-1">
@@ -325,7 +326,7 @@ export const SafeRouteModal: React.FC = () => {
 
                 <div className="p-3 rounded-lg bg-rose-950/20 border border-rose-800/30">
                   <div className="text-[10px] font-mono text-rose-400 uppercase font-semibold mb-1">
-                    Tracé Direct à Risque (Rouge)
+                    {t.safeRouteModal.directPath}
                   </div>
                   <div className="flex items-center gap-3 font-mono text-slate-300">
                     <span className="flex items-center gap-1">
@@ -350,7 +351,7 @@ export const SafeRouteModal: React.FC = () => {
                 <div className="space-y-1">
                   <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3 text-amber-400" />
-                    Périmètres dangereux contournés :
+                    {t.safeRouteModal.hazardsAvoided}
                   </span>
                   <div className="space-y-1">
                     {routeResult.hazardsAvoided.map((h, i) => (
@@ -374,7 +375,7 @@ export const SafeRouteModal: React.FC = () => {
                 onClick={handleApplyToMap}
                 className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center space-x-2 transition shadow-xl shadow-emerald-950"
               >
-                <span>Visualiser le tracé sur la carte</span>
+                <span>{t.safeRouteModal.visualize}</span>
                 <ExternalLink className="w-4 h-4" />
               </button>
             </div>

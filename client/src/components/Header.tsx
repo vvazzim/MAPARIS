@@ -12,7 +12,8 @@ import {
   Loader2,
   Menu,
   X,
-  Github
+  Github,
+  Globe
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
@@ -27,6 +28,9 @@ export const Header: React.FC = () => {
     openSafeRouteModal,
     isMobileMenuOpen,
     toggleMobileMenu,
+    language,
+    toggleLanguage,
+    t,
   } = useIncidentStore();
 
   const dangerCount = incidents.filter((i) => i.severity === 'danger').length;
@@ -36,7 +40,7 @@ export const Header: React.FC = () => {
   const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
 
   return (
-    <header className="h-16 border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-6 flex items-center justify-between z-20 select-none">
+    <header className="h-16 border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 select-none">
       <div className="flex items-center space-x-3">
         <div className="relative flex items-center justify-center p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500">
           <ShieldAlert className="w-6 h-6 animate-pulse" />
@@ -46,14 +50,14 @@ export const Header: React.FC = () => {
           </span>
         </div>
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            Paris Security Pulse
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            {t.header.title}
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-800">
-              Live OSINT
+              {t.header.liveOsint}
             </span>
           </h1>
-          <p className="text-xs text-slate-400">
-            Monitoring temps réel de la sécurité & manifestations à Paris
+          <p className="text-xs text-slate-400 hidden sm:block">
+            {t.header.subtitle}
           </p>
         </div>
       </div>
@@ -62,20 +66,20 @@ export const Header: React.FC = () => {
       <div className="hidden lg:flex items-center space-x-3 text-xs font-medium">
         <div className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
           <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-          <span>{dangerCount} Alertes Rouges</span>
+          <span>{t.header.dangerCount.replace('{count}', String(dangerCount))}</span>
         </div>
         <div className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
           <Radio className="w-3.5 h-3.5 text-amber-500" />
-          <span>{warningCount} Tensions</span>
+          <span>{t.header.warningCount.replace('{count}', String(warningCount))}</span>
         </div>
         <div className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
           <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-          <span>{safeCount} Zones Claires</span>
+          <span>{t.header.safeCount.replace('{count}', String(safeCount))}</span>
         </div>
       </div>
 
       {/* Right Actions & Status */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2 sm:space-x-3">
         {/* Simulate OSINT Bot CTA */}
         <button
           onClick={async () => {
@@ -86,10 +90,10 @@ export const Header: React.FC = () => {
             }
           }}
           className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/40 text-purple-300 hover:bg-purple-900/60 text-xs font-semibold shadow-md transition active:scale-95"
-          title="Simuler l'ingestion d'un flux Telegram/Twitter OSINT en temps réel"
+          title="Simuler l'ingestion d'un flux OSINT en temps réel"
         >
           <Radio className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-          <span>Simuler OSINT</span>
+          <span>{t.header.simulateOsint}</span>
         </button>
 
         {/* Safe Routing CTA */}
@@ -99,7 +103,7 @@ export const Header: React.FC = () => {
           title="Calculer un itinéraire sécurisé contournant les manifestations"
         >
           <Compass className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Itinéraire Safe</span>
+          <span>{t.header.safeRoute}</span>
         </button>
 
         {/* Quick Report CTA */}
@@ -108,21 +112,21 @@ export const Header: React.FC = () => {
           className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-950/60 transition active:scale-95"
         >
           <PlusCircle className="w-3.5 h-3.5" />
-          <span>Signaler</span>
+          <span>{t.header.report}</span>
         </button>
 
         {/* RATP Transports quick toggle */}
         <button
           onClick={toggleTransportWidget}
-          className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${
+          className={`hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition ${
             showTransportWidget
               ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-950/50'
               : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20'
           }`}
-          title="Ouvrir le panneau d'état des métros RATP"
+          title="Statut métros RATP"
         >
           <Train className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Hubs RATP</span>
+          <span>{t.header.ratpHubs}</span>
           {disruptedStations > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-600 text-white font-bold">
               {disruptedStations}
@@ -130,37 +134,41 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Socket Status Indicator avec gestion reconnexion Free Tier Render */}
+        {/* Language Switcher (FR / EN) */}
+        <button
+          onClick={toggleLanguage}
+          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white border border-dark-700 text-xs font-mono transition"
+          title={language === 'fr' ? 'Switch to English' : 'Passer en Français'}
+          aria-label="Changer de langue / Switch language"
+        >
+          <Globe className="w-3.5 h-3.5 text-pulse-accent" />
+          <span className="font-bold">{language.toUpperCase()}</span>
+        </button>
+
+        {/* Socket Status Indicator */}
         <div
-          className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-mono transition-colors ${
+          className={`flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 rounded-full border text-xs font-mono transition-colors ${
             connectionStatus === 'connected'
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
               : connectionStatus === 'reconnecting'
               ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
               : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
           }`}
-          title={
-            connectionStatus === 'connected'
-              ? 'Connecté au serveur WebSocket'
-              : connectionStatus === 'reconnecting'
-              ? 'Reconnexion automatique en cours (réveil du serveur Render)...'
-              : 'Déconnecté'
-          }
         >
           {connectionStatus === 'connected' ? (
             <>
               <Wifi className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-              <span className="hidden sm:inline">LIVE SYNC</span>
+              <span className="hidden sm:inline">{t.header.liveSync}</span>
             </>
           ) : connectionStatus === 'reconnecting' ? (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-              <span className="hidden sm:inline">RÉVEIL SERVEUR...</span>
+              <span className="hidden sm:inline">{t.header.serverWaking}</span>
             </>
           ) : (
             <>
               <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">HORS LIGNE</span>
+              <span className="hidden sm:inline">{t.header.offline}</span>
             </>
           )}
         </div>
@@ -170,8 +178,8 @@ export const Header: React.FC = () => {
           href="https://github.com/vvazzim/MAPARIS"
           target="_blank"
           rel="noreferrer"
-          className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white border border-dark-700 text-xs font-mono transition"
-          title="Code source ouvert créé par VVAZZIM"
+          className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white border border-dark-700 text-xs font-mono transition"
+          title="Code source créé par VVAZZIM"
         >
           <Github className="w-3.5 h-3.5" />
           <span>VVAZZIM</span>
@@ -181,8 +189,8 @@ export const Header: React.FC = () => {
         <button
           onClick={toggleMobileMenu}
           className="lg:hidden p-2 rounded-xl bg-dark-800 text-slate-300 hover:text-white hover:bg-dark-700 transition"
-          title="Ouvrir le menu responsive"
-          aria-label="Menu principal"
+          title="Menu"
+          aria-label="Menu"
         >
           {isMobileMenuOpen ? <X className="w-5 h-5 text-rose-400" /> : <Menu className="w-5 h-5" />}
         </button>

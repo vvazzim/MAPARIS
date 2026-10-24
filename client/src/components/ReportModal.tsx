@@ -27,7 +27,7 @@ interface AddressSuggestion {
 }
 
 export const ReportModal: React.FC = () => {
-  const { isReportModalOpen, closeReportModal, addIncident } = useIncidentStore();
+  const { isReportModalOpen, closeReportModal, addIncident, t } = useIncidentStore();
 
   const [addressQuery, setAddressQuery] = useState('');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
@@ -176,9 +176,9 @@ export const ReportModal: React.FC = () => {
               <Radio className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Signaler un Événement</h2>
+              <h2 className="text-base font-bold text-white">{t.reportModal.title}</h2>
               <p className="text-xs text-slate-400">
-                Alerte communautaire géocodée en temps réel (Paris & IDF)
+                {t.reportModal.subtitle}
               </p>
             </div>
           </div>
@@ -209,7 +209,7 @@ export const ReportModal: React.FC = () => {
           {/* 1. Adresse / Lieu avec autocomplétion BAN */}
           <div className="relative" ref={dropdownRef}>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Localisation <span className="text-rose-500">*</span>
+              {t.reportModal.locationLabel} <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -220,7 +220,7 @@ export const ReportModal: React.FC = () => {
                   setSelectedLocation(null);
                 }}
                 onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                placeholder="Ex: Place de la République, 10 rue de Rivoli..."
+                placeholder={t.reportModal.locationPlaceholder}
                 className="w-full pl-9 pr-9 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pulse-accent transition"
                 required
               />
@@ -257,7 +257,7 @@ export const ReportModal: React.FC = () => {
           {/* 2. Niveau de Sévérité */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-2">
-              Niveau de Gravité <span className="text-rose-500">*</span>
+              {t.reportModal.severityLabel} <span className="text-rose-500">*</span>
             </label>
             <div className="grid grid-cols-3 gap-2.5">
               <button
@@ -271,10 +271,10 @@ export const ReportModal: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-1">
                   <AlertCircle className={`w-4 h-4 ${severity === 'danger' ? 'text-rose-500' : 'text-slate-500'}`} />
-                  <span className="text-[10px] font-mono uppercase font-bold text-rose-500">Rouge</span>
+                  <span className="text-[10px] font-mono uppercase font-bold text-rose-500">{t.reportModal.dangerBadge}</span>
                 </div>
-                <span className="text-xs font-bold text-white">Danger</span>
-                <span className="text-[10px] text-slate-400">Émeute, feux, violence</span>
+                <span className="text-xs font-bold text-white">{t.reportModal.dangerTitle}</span>
+                <span className="text-[10px] text-slate-400">{t.reportModal.dangerDesc}</span>
               </button>
 
               <button
@@ -288,10 +288,10 @@ export const ReportModal: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-1">
                   <AlertTriangle className={`w-4 h-4 ${severity === 'warning' ? 'text-amber-500' : 'text-slate-500'}`} />
-                  <span className="text-[10px] font-mono uppercase font-bold text-amber-500">Orange</span>
+                  <span className="text-[10px] font-mono uppercase font-bold text-amber-500">{t.reportModal.warningBadge}</span>
                 </div>
-                <span className="text-xs font-bold text-white">Tension</span>
-                <span className="text-[10px] text-slate-400">Filtrage, cortège dense</span>
+                <span className="text-xs font-bold text-white">{t.reportModal.warningTitle}</span>
+                <span className="text-[10px] text-slate-400">{t.reportModal.warningDesc}</span>
               </button>
 
               <button
@@ -305,10 +305,10 @@ export const ReportModal: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-1">
                   <CheckCircle className={`w-4 h-4 ${severity === 'safe' ? 'text-emerald-500' : 'text-slate-500'}`} />
-                  <span className="text-[10px] font-mono uppercase font-bold text-emerald-500">Vert</span>
+                  <span className="text-[10px] font-mono uppercase font-bold text-emerald-500">{t.reportModal.safeBadge}</span>
                 </div>
-                <span className="text-xs font-bold text-white">Zone Safe</span>
-                <span className="text-[10px] text-slate-400">Calme, dégagé, fluide</span>
+                <span className="text-xs font-bold text-white">{t.reportModal.safeTitle}</span>
+                <span className="text-[10px] text-slate-400">{t.reportModal.safeDesc}</span>
               </button>
             </div>
           </div>
@@ -316,16 +316,16 @@ export const ReportModal: React.FC = () => {
           {/* 3. Catégorie */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Catégorie de l'incident
+              {t.reportModal.categoryLabel}
             </label>
             <div className="grid grid-cols-3 gap-1.5 text-xs">
               {[
-                { id: 'manifestation', label: 'Manifestation', icon: Flag },
-                { id: 'tension', label: 'Tension / FDO', icon: AlertTriangle },
-                { id: 'blocage', label: 'Blocage routier', icon: MapPin },
-                { id: 'fermeture_station', label: 'Station fermée', icon: Train },
-                { id: 'degradation', label: 'Dégradations', icon: Flame },
-                { id: 'calme', label: 'Zone calme', icon: CheckCircle },
+                { id: 'manifestation', label: t.reportModal.categories.manifestation, icon: Flag },
+                { id: 'tension', label: t.reportModal.categories.tension, icon: AlertTriangle },
+                { id: 'blocage', label: t.reportModal.categories.blocage, icon: MapPin },
+                { id: 'fermeture_station', label: t.reportModal.categories.fermeture_station, icon: Train },
+                { id: 'degradation', label: t.reportModal.categories.degradation, icon: Flame },
+                { id: 'calme', label: t.reportModal.categories.calme, icon: CheckCircle },
               ].map((cat) => {
                 const Icon = cat.icon;
                 const isSelected = category === cat.id;
@@ -351,13 +351,13 @@ export const ReportModal: React.FC = () => {
           {/* 4. Description détaillée */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Description de la situation <span className="text-rose-500">*</span>
+              {t.reportModal.descriptionLabel} <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Précisez ce qui se passe : présence policière, feux, projectiles, ambiance générale..."
+              placeholder={t.reportModal.descriptionPlaceholder}
               className="w-full p-3 bg-dark-950 border border-dark-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pulse-accent transition"
               required
             />
@@ -366,13 +366,13 @@ export const ReportModal: React.FC = () => {
           {/* 5. Source */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Origine de l'information
+              {t.reportModal.sourceLabel}
             </label>
             <input
               type="text"
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              placeholder="Ex: Témoin direct, Twitter @AlertesParis, Groupe Telegram..."
+              placeholder={t.reportModal.sourcePlaceholder}
               className="w-full px-3 py-2 bg-dark-950 border border-dark-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pulse-accent transition"
             />
           </div>
@@ -386,7 +386,7 @@ export const ReportModal: React.FC = () => {
           >
             <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span>Diffusion immédiate temps réel (Socket.io)</span>
+              <span>{t.reportModal.note}</span>
             </div>
 
             <div className="flex items-center justify-end space-x-3">
@@ -395,7 +395,7 @@ export const ReportModal: React.FC = () => {
                 onClick={closeReportModal}
                 className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-dark-800 transition"
               >
-                Annuler
+                {t.reportModal.cancel}
               </button>
 
               <button
@@ -406,12 +406,12 @@ export const ReportModal: React.FC = () => {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Géocodage & Diffusion...</span>
+                    <span>{t.reportModal.submitting}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Diffuser l'Alerte en Direct</span>
+                    <span>{t.reportModal.submit}</span>
                   </>
                 )}
               </button>

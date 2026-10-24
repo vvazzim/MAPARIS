@@ -4,7 +4,7 @@ import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { useIncidentStore } from '../store/useIncidentStore';
 
 export const TransportWidget: React.FC = () => {
-  const { showTransportWidget, toggleTransportWidget, flyTo } = useIncidentStore();
+  const { showTransportWidget, toggleTransportWidget, flyTo, t } = useIncidentStore();
   const [filter, setFilter] = useState<'all' | 'disrupted'>('all');
 
   if (!showTransportWidget) return null;
@@ -27,13 +27,13 @@ export const TransportWidget: React.FC = () => {
           </div>
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
-              Hubs Transports RATP
+              {t.transport.title}
               <span className="text-[10px] font-mono px-1.5 py-0.2 bg-dark-800 text-slate-300 rounded">
                 PRIM API
               </span>
             </h3>
             <p className="text-[11px] text-slate-400">
-              Statut des grandes correspondances & métros
+              {t.transport.subtitle}
             </p>
           </div>
         </div>
@@ -51,16 +51,16 @@ export const TransportWidget: React.FC = () => {
         <div className="flex items-center space-x-2 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300">
           <AlertCircle className="w-4 h-4 text-rose-400" />
           <div>
-            <div className="font-bold font-mono">{closedCount} Station(s)</div>
-            <div className="text-[10px] text-rose-400/80">Fermée(s) d'urgence</div>
+            <div className="font-bold font-mono">{t.transport.stationsClosedCount.replace('{count}', String(closedCount))}</div>
+            <div className="text-[10px] text-rose-400/80">{t.transport.emergencyClosed}</div>
           </div>
         </div>
 
         <div className="flex items-center space-x-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300">
           <AlertTriangle className="w-4 h-4 text-amber-400" />
           <div>
-            <div className="font-bold font-mono">{disruptedCount} Hub(s)</div>
-            <div className="text-[10px] text-amber-400/80">Filtrage / Ralentis</div>
+            <div className="font-bold font-mono">{t.transport.hubsDisruptedCount.replace('{count}', String(disruptedCount))}</div>
+            <div className="text-[10px] text-amber-400/80">{t.transport.slowdown}</div>
           </div>
         </div>
       </div>
@@ -75,7 +75,7 @@ export const TransportWidget: React.FC = () => {
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Toutes ({PARIS_TRANSPORT_HUBS.length})
+          {t.transport.allTab} ({PARIS_TRANSPORT_HUBS.length})
         </button>
         <button
           onClick={() => setFilter('disrupted')}
@@ -85,7 +85,7 @@ export const TransportWidget: React.FC = () => {
               : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Perturbées ({closedCount + disruptedCount})
+          {t.transport.disrupted} ({closedCount + disruptedCount})
         </button>
       </div>
 
@@ -121,7 +121,7 @@ export const TransportWidget: React.FC = () => {
                       : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                   }`}
                 >
-                  {isClosed ? 'Fermée' : isDisrupted ? 'Perturbée' : 'Fluide'}
+                  {isClosed ? t.transport.closed : isDisrupted ? t.transport.disrupted : t.transport.fluid}
                 </span>
               </div>
 
@@ -147,7 +147,7 @@ export const TransportWidget: React.FC = () => {
                 onClick={() => flyTo(station.lat, station.lng, 16)}
                 className="w-full py-1.5 px-2.5 rounded-lg bg-dark-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center space-x-1.5 transition"
               >
-                <span>Localiser sur la carte</span>
+                <span>{t.transport.locateOnMap}</span>
                 <ExternalLink className="w-3 h-3 text-slate-400" />
               </button>
             </div>

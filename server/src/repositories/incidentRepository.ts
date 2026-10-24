@@ -41,11 +41,17 @@ export class IncidentRepository {
           .gt('expires_at', new Date().toISOString());
 
         if (!error && data) {
+          const maxAgeMs = 12 * 3600 * 1000;
+          const nowMs = Date.now();
           data.forEach((row: any) => {
             const inc = this.mapSupabaseRowToIncident(row);
-            this.inMemoryCache.set(inc.id, inc);
+            const ageMs = nowMs - new Date(inc.created_at).getTime();
+            // N'ingère en mémoire que les signalements récents (<12h) et valides
+            if (ageMs <= maxAgeMs && !inc.resolved) {
+              this.inMemoryCache.set(inc.id, inc);
+            }
           });
-          console.log(`⚡ [Supabase] ${data.length} incidents actifs synchronisés`);
+          console.log(`⚡ [Supabase] ${this.inMemoryCache.size} incidents récents synchronisés`);
           return;
         }
       } catch (err: any) {
@@ -271,9 +277,9 @@ export class IncidentRepository {
 
       nearby.expires_at = (extendedExpiry > maxGlobalExpiry ? maxGlobalExpiry : extendedExpiry).toISOString();
 
-      // Enrichissement de la description si le nouveau signalement est substantiel
-      if (data.description && data.description.length > 15 && !nearby.description.includes(data.description.slice(0, 20))) {
-        nearby.description = `${nearby.description} | Dernier signalement: ${data.description}`;
+      // Mise à jour de la description avec le signalement le plus récent (strictement limité à 160 caractères)
+      if (data.description && data.description.length > 10) {
+        nearby.description = data.description.slice(0, 160);
       }
 
       console.log(`🔗 [Clustering 50m] Fusion avec l'incident [${nearby.id}] - Reports: ${nearby.reports_count}, TTL étendu jusqu'à ${nearby.expires_at}`);
@@ -366,10 +372,19 @@ export class IncidentRepository {
 
   async getAll(filters?: IncidentQueryFilters): Promise<Incident[]> {
     const now = Date.now();
+    const maxAgeMs = 12 * 3600 * 1000;
     let list = Array.from(this.inMemoryCache.values());
 
-    // Filtrage strict : exclut les incidents expirés ou résolus
-    list = list.filter((i) => !i.resolved && new Date(i.expires_at).getTime() > now);
+    // Filtrage strict : exclut les incidents expirés, résolus, de janvier ou vieux de >12h
+    list = list.filter((i) => {
+      if (i.resolved) return false;
+      if (new Date(i.expires_at).getTime() <= now) return false;
+      const ageMs = now - new Date(i.created_at).getTime();
+      if (ageMs > maxAgeMs) return false;
+      const desc = (i.description || '').toLowerCase();
+      if (desc.includes('janvier') || desc.includes('nouvelle vidéo') || desc.includes('patrick bruel')) return false;
+      return true;
+    });
 
     if (filters?.severity) {
       list = list.filter((i) => i.severity === filters.severity);
@@ -430,6 +445,81 @@ export class IncidentRepository {
 
     await this.saveIncident(inc);
     return inc;
+  }
+
+  /**
+   * Supprime un incident par son ID
+   */
+  async deleteById(id: string): Promise<boolean> {
+    const exists = this.inMemoryCache.has(id);
+    this.inMemoryCache.delete(id);
+    this.persistLocal();
+
+    if (isSupabaseEnabled && supabase) {
+      try {
+        await supabase.from('incidents').delete().eq('id', id);
+      } catch (err: any) {
+        console.warn('⚠️ [Supabase] Erreur suppression par ID:', err.message);
+      }
+    }
+
+    return exists;
+  }
+
+  /**
+   * Purge tous les signalements de janvier, obsolètes (>12h) ou faux
+   */
+  async purgeObsoleteIncidents(): Promise<string[]> {
+    const now = Date.now();
+    const maxAgeMs = 12 * 3600 * 1000;
+    const purgedIds: string[] = [];
+
+    for (const [id, incident] of this.inMemoryCache.entries()) {
+      const ageMs = now - new Date(incident.created_at).getTime();
+      const desc = (incident.description || '').toLowerCase();
+      const isJanuary = desc.includes('janvier') || new Date(incident.created_at).getMonth() === 0;
+      const isTooOld = ageMs > maxAgeMs;
+      const isTooLong = (incident.description || '').length > 200;
+
+      if (incident.resolved || isJanuary || isTooOld || isTooLong) {
+        purgedIds.push(id);
+        this.inMemoryCache.delete(id);
+      }
+    }
+
+    if (purgedIds.length > 0) {
+      this.persistLocal();
+      console.log(`🧹 [Purge] ${purgedIds.length} faux ou anciens signalements supprimés.`);
+
+      if (isSupabaseEnabled && supabase) {
+        try {
+          await supabase.from('incidents').delete().in('id', purgedIds);
+        } catch (err: any) {
+          console.warn('⚠️ [Supabase] Erreur suppression purge:', err.message);
+        }
+      }
+    }
+
+    return purgedIds;
+  }
+
+  /**
+   * Remise à zéro totale de la carte
+   */
+  async clearAll(): Promise<string[]> {
+    const allIds = Array.from(this.inMemoryCache.keys());
+    this.inMemoryCache.clear();
+    this.persistLocal();
+
+    if (isSupabaseEnabled && supabase) {
+      try {
+        await supabase.from('incidents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      } catch (err: any) {
+        console.warn('⚠️ [Supabase] Erreur suppression totale:', err.message);
+      }
+    }
+
+    return allIds;
   }
 
   /**
