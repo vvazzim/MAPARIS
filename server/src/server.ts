@@ -1,0 +1,40 @@
+import { Server } from 'socket.io';
+import { buildApp } from './app.js';
+import { env } from './config/env.js';
+import { setupSocketIO } from './sockets/socketHandler.js';
+
+async function bootstrap() {
+  try {
+    const app = await buildApp();
+
+    // Attach Socket.io to Fastify HTTP server
+    const io = new Server(app.server, {
+      cors: {
+        origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+        methods: ['GET', 'POST'],
+        credentials: true,
+      },
+    });
+
+    setupSocketIO(io);
+
+    // Start Fastify server
+    await app.listen({ port: env.PORT, host: env.HOST });
+
+    console.log(`
+=====================================================
+🛡️  PARIS SECURITY PULSE - SERVEUR DÉMARRÉ
+=====================================================
+📡 HTTP API:      http://${env.HOST}:${env.PORT}/api/health
+⚡ WebSocket IO:  ws://${env.HOST}:${env.PORT}
+💻 Client URL:    ${env.CLIENT_URL}
+🌍 Environnement: ${env.NODE_ENV}
+=====================================================
+    `);
+  } catch (err) {
+    console.error('Erreur critique au démarrage du serveur:', err);
+    process.exit(1);
+  }
+}
+
+bootstrap();

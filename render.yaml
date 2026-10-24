@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: paris-security-pulse
+    env: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build --workspace=client && npm run build --workspace=server
+    startCommand: npm run start --workspace=server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

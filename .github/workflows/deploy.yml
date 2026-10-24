@@ -1,0 +1,43 @@
+name: CI/CD Pipeline - Paris Security Pulse
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    name: Build & Test Monorepo
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install monorepo dependencies
+        run: npm ci || npm install
+
+      - name: 🏗️ Monorepo Build (Client & Server)
+        run: npm run build --workspaces
+
+      - name: 🧪 Execute Backend Integration & Routing Tests
+        run: |
+          cd server
+          npx tsx src/test_clustering.ts
+          npx tsx test-step2.ts
+          npx tsx test-step4.ts
+          npx tsx test-step5.ts
+          npx tsx test-step6.ts
+          npx tsx test-fix.ts
+
+      - name: 🔍 Verify Client Production Assets
+        run: |
+          test -f client/dist/index.html
+          echo "✅ Production artifacts verified successfully"
