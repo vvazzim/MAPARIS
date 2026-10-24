@@ -113,4 +113,12 @@ CREATE POLICY "Public anonymous update"
     USING (true);
 
 -- Active la réplication temps réel Supabase
-ALTER PUBLICATION supabase_realtime ADD TABLE public.incidents;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'incidents'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.incidents;
+  END IF;
+END $$;
