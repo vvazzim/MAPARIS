@@ -68,14 +68,11 @@ export const MobileDrawer: React.FC = () => {
           
           {/* Header du Menu Unique */}
           <div className="p-4 sm:p-5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
-            <div className="flex items-center space-x-3">
-              {/* Logo officiel Ville de Paris avec (!) */}
-              <div className="p-2 rounded-xl bg-dark-800 border border-dark-750 flex items-center justify-center">
-                <ParisLogo className="w-6 h-6" showAlertDot={dangerCount > 0 || warningCount > 0} />
-              </div>
+            <div className="flex items-center space-x-2.5 sm:space-x-3">
+              <ParisLogo className="w-8 h-8" showAlertDot={dangerCount > 0 || warningCount > 0} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-white text-base">MaParis</h3>
+                  <h3 className="font-extrabold text-white text-base">MA<span className="text-rose-500">!</span>Paris</h3>
                   {/* Indicateur Live OSINT en VERT */}
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-700/60 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
