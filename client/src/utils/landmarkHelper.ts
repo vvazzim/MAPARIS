@@ -111,6 +111,19 @@ export function isCoordinateString(text?: string | null): boolean {
   return false;
 }
 
+export function cleanShortAddress(name: string | null | undefined, lat: number, lng: number): string {
+  if (name && !isCoordinateString(name)) {
+    // Nettoie les suffixes administratifs inutiles pour un affichage minimaliste
+    return name
+      .replace(/,?\s*France$/i, '')
+      .replace(/,?\s*Région Île-de-France$/i, '')
+      .replace(/,?\s*Île-de-France$/i, '')
+      .replace(/,?\s*IDF$/i, '')
+      .trim();
+  }
+  return formatLocationName(name, lat, lng);
+}
+
 export function formatLocationName(name: string | null | undefined, lat: number, lng: number): string {
   if (name && !isCoordinateString(name)) {
     return name;

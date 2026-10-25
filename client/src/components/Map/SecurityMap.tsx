@@ -4,17 +4,14 @@ import L from 'leaflet';
 import { PARIS_TRANSPORT_HUBS } from '../../data/ratpHubs';
 import { useIncidentStore } from '../../store/useIncidentStore';
 import { Incident } from '../../types';
-import { formatLocationName } from '../../utils/landmarkHelper';
+import { cleanShortAddress } from '../../utils/landmarkHelper';
 import { formatIncidentDetails } from '../../utils/incidentFormatter';
 import { 
-  ThumbsUp, 
-  ThumbsDown, 
   Train, 
   Navigation, 
   Layers, 
   Shield, 
-  ShieldCheck, 
-  Users, 
+  MapPin,
   X, 
   SlidersHorizontal 
 } from 'lucide-react';
@@ -179,7 +176,6 @@ export const SecurityMap: React.FC = () => {
     toggleTransports,
     toggleTransportWidget,
     flyTo,
-    voteIncident,
     activeSafeRoute,
     clearSafeRoute,
     selectedRouteIndex,
@@ -308,95 +304,26 @@ export const SecurityMap: React.FC = () => {
               }}
             >
               <Popup className="pulse-popup">
-                <div className="p-1 min-w-[240px] max-w-[280px] sm:max-w-[320px] text-slate-100">
-                  <div className="flex items-center justify-between pb-2 border-b border-dark-700/80 mb-2">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-base select-none leading-none">{details.emoji}</span>
-                      <span className={`text-[10px] uppercase font-bold tracking-wider font-mono px-2 py-0.5 rounded-full ${details.severityBadgeClass}`}>
-                        {details.cleanTitle}
+                <div className="p-2 min-w-[210px] max-w-[250px] text-slate-100 select-none">
+                  {/* Ligne 1 : Émoji + Catégorie Principale + Heure Relative */}
+                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-dark-700/80 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-base select-none leading-none shrink-0">{details.emoji}</span>
+                      <span className={`text-[10px] uppercase font-bold tracking-wider font-mono px-2 py-0.5 rounded-full ${details.severityBadgeClass} truncate`}>
+                        {details.categoryLabel}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-[10px] font-mono text-slate-400 shrink-0">
                       {details.timeAgo}
                     </span>
                   </div>
 
-                  {/* Cluster & TTL Info Bar */}
-                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-dark-900/90 px-2 py-1 rounded border border-dark-700/80 mb-2">
-                    <span className="flex items-center gap-1 font-semibold text-amber-300">
-                      <Users className="w-3 h-3 text-amber-400" />
-                      <span>{incident.reports_count && incident.reports_count > 1 ? t.map.confirmedBadge.replace('{count}', String(incident.reports_count)) : t.map.oneSignal}</span>
+                  {/* Ligne 2 : Adresse Courte Épurée */}
+                  <div className="flex items-start gap-1.5 text-slate-200">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span className="text-xs font-semibold leading-tight text-white">
+                      {cleanShortAddress(incident.location_name, incident.lat, incident.lng)}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-dark-950 text-slate-300 font-mono">
-                      {details.categoryLabel}
-                    </span>
-                  </div>
-
-                  <h4 className="font-semibold text-xs text-white leading-tight mb-1.5">
-                    {formatLocationName(incident.location_name, incident.lat, incident.lng)}
-                  </h4>
-
-                  <p className="text-xs text-slate-300 leading-snug line-clamp-3 mb-2.5 overflow-hidden text-ellipsis break-words">
-                    {details.cleanDescription}
-                  </p>
-
-                  {/* Reliability gauge in popup */}
-                  <div className="mb-2.5 bg-dark-900/80 p-2 rounded-lg border border-dark-700">
-                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-                      <span className="flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                        <span>{t.map.reliability}</span>
-                      </span>
-                      <span className="font-bold text-slate-200">
-                        {Math.round((incident.reliability_score ?? 0.5) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-dark-800 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          (incident.reliability_score ?? 0.5) >= 0.8
-                            ? 'bg-emerald-500'
-                            : (incident.reliability_score ?? 0.5) >= 0.6
-                            ? 'bg-amber-500'
-                            : 'bg-rose-500'
-                        }`}
-                        style={{ width: `${Math.round((incident.reliability_score ?? 0.5) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-dark-700 text-[11px] text-slate-400">
-                    <span className="text-[10px] font-mono text-slate-400 truncate max-w-[130px]" title={details.sourceBadge}>
-                      {details.sourceBadge}
-                    </span>
-                    
-                    <div className="flex items-center space-x-1.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          voteIncident(incident.id, 'up');
-                        }}
-                        className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-200 transition text-xs"
-                        title={t.map.voteUpTitle}
-                      >
-                        <ThumbsUp className="w-3 h-3 text-emerald-400" />
-                        <span className="font-mono font-bold text-[10px]">{incident.upvotes}</span>
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          voteIncident(incident.id, 'down');
-                        }}
-                        className="flex items-center space-x-1 px-2 py-1 rounded bg-dark-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition text-xs"
-                        title={t.map.voteDownTitle}
-                      >
-                        <ThumbsDown className="w-3 h-3 text-rose-400" />
-                        {incident.downvotes !== undefined && incident.downvotes > 0 && (
-                          <span className="font-mono text-[10px]">{incident.downvotes}</span>
-                        )}
-                      </button>
-                    </div>
                   </div>
                 </div>
               </Popup>

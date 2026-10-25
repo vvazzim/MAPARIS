@@ -1,22 +1,14 @@
 import React, { useState } from 'react';
 import { 
   Activity, 
-  AlertCircle, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
   MapPin, 
-  ThumbsUp, 
-  ThumbsDown, 
-  PlusCircle, 
   Search, 
-  ShieldCheck, 
-  ShieldAlert, 
-  Map as MapIcon 
+  Map as MapIcon,
+  PlusCircle
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
-import { Incident, Severity } from '../types';
-import { formatLocationName } from '../utils/landmarkHelper';
+import { Severity } from '../types';
+import { cleanShortAddress } from '../utils/landmarkHelper';
 import { formatIncidentDetails } from '../utils/incidentFormatter';
 
 export const IncidentFeed: React.FC = () => {
@@ -24,8 +16,7 @@ export const IncidentFeed: React.FC = () => {
     incidents, 
     selectedIncident, 
     setSelectedIncident, 
-    openReportModal, 
-    voteIncident,
+    openReportModal,
     flyTo,
     showTransportWidget,
     toggleTransportWidget,
@@ -54,51 +45,37 @@ export const IncidentFeed: React.FC = () => {
     return true;
   });
 
-  const getSeverityBadge = (severity: Incident['severity']) => {
-    switch (severity) {
-      case 'danger':
-        return (
-          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/30">
-            <AlertCircle className="w-3 h-3" />
-            <span>{t.feed.filterDanger}</span>
-          </span>
-        );
-      case 'warning':
-        return (
-          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            <AlertTriangle className="w-3 h-3" />
-            <span>{t.feed.filterWarning}</span>
-          </span>
-        );
-      case 'safe':
-        return (
-          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle className="w-3 h-3" />
-            <span>{t.feed.filterSafe}</span>
-          </span>
-        );
-    }
-  };
-
   return (
     <aside className={`h-full flex-col bg-dark-900 border-l border-dark-800 shrink-0 select-none ${
       mobileActiveTab === 'feed'
         ? 'flex fixed inset-0 z-30 lg:static lg:w-96'
         : 'hidden lg:flex lg:w-96'
     }`}>
-      {/* Header Panel */}
-      <div className="p-4 border-b border-dark-800 flex items-center justify-between">
+      {/* En-tête épuré */}
+      <div className="p-3.5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80">
         <div className="flex items-center space-x-2">
           <Activity className="w-4 h-4 text-pulse-accent animate-pulse" />
-          <h2 className="font-semibold text-sm text-slate-100">{t.feed.title}</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono px-2 py-0.5 rounded bg-dark-800 text-slate-400">
-            {t.feed.reportsCount.replace('{count}', String(filteredIncidents.length))}
+          <h2 className="font-bold text-sm text-white">{t.feed.title}</h2>
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-dark-800 text-slate-300 border border-dark-750">
+            {filteredIncidents.length}
           </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Raccourci Signaler discret sur desktop */}
+          <button
+            onClick={openReportModal}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-semibold transition active:scale-95"
+            title={t.feed.reportButton}
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span className="text-[11px]">{t.header.report}</span>
+          </button>
+
+          {/* Bouton Retour Carte sur mobile */}
           <button 
             onClick={() => setMobileActiveTab('map')}
-            className="lg:hidden p-1.5 rounded-lg bg-dark-800 text-slate-300 hover:text-white"
+            className="lg:hidden p-1.5 rounded-lg bg-dark-800 text-slate-300 hover:text-white border border-dark-700"
             title={t.feed.backToMap}
           >
             <MapIcon className="w-4 h-4 text-pulse-accent" />
@@ -106,19 +83,8 @@ export const IncidentFeed: React.FC = () => {
         </div>
       </div>
 
-      {/* Primary Crowdsourcing Action */}
-      <div className="p-3 border-b border-dark-800/80 bg-dark-950/40">
-        <button
-          onClick={openReportModal}
-          className="w-full py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center justify-center space-x-2 transition shadow-lg shadow-rose-950/60 active:scale-[0.98]"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>{t.feed.reportButton}</span>
-        </button>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="p-3 border-b border-dark-800/60 bg-dark-900 space-y-2">
+      {/* Barre de Recherche & Filtres Rapides (Minimale & Compacte) */}
+      <div className="p-2.5 border-b border-dark-800 bg-dark-900 space-y-2">
         <div className="relative">
           <input
             type="text"
@@ -131,41 +97,66 @@ export const IncidentFeed: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1 text-[11px]">
-          {(['all', 'danger', 'warning', 'safe'] as const).map((sev) => (
-            <button
-              key={sev}
-              onClick={() => setSeverityFilter(sev)}
-              className={`flex-1 py-1 rounded-md capitalize font-medium transition ${
-                severityFilter === sev
-                  ? 'bg-dark-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {sev === 'all'
-                ? t.feed.filterAll
-                : sev === 'danger'
-                ? t.feed.filterDanger
-                : sev === 'warning'
-                ? t.feed.filterWarning
-                : t.feed.filterSafe}
-            </button>
-          ))}
+          {(['all', 'danger', 'warning', 'safe'] as const).map((sev) => {
+            const isActive = severityFilter === sev;
+            let activeClass = 'bg-dark-800 text-white shadow-sm';
+            if (isActive && sev === 'danger') activeClass = 'bg-rose-950/80 text-rose-300 border border-rose-800';
+            if (isActive && sev === 'warning') activeClass = 'bg-amber-950/80 text-amber-300 border border-amber-800';
+            if (isActive && sev === 'safe') activeClass = 'bg-emerald-950/80 text-emerald-300 border border-emerald-800';
+
+            return (
+              <button
+                key={sev}
+                onClick={() => setSeverityFilter(sev)}
+                className={`flex-1 py-1 rounded-md capitalize font-medium transition ${
+                  isActive ? activeClass : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {sev === 'all'
+                  ? t.feed.filterAll
+                  : sev === 'danger'
+                  ? t.feed.filterDanger
+                  : sev === 'warning'
+                  ? t.feed.filterWarning
+                  : t.feed.filterSafe}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      {/* Liste Épurée des Incidents (Strict Minimum Vital) */}
+      <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
         {filteredIncidents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center p-6 text-slate-500">
-            <Activity className="w-8 h-8 stroke-1 mb-2 opacity-50" />
+          <div className="flex flex-col items-center justify-center h-48 text-center p-6 text-slate-500">
+            <Activity className="w-7 h-7 stroke-1 mb-2 opacity-40" />
             <p className="text-xs font-medium">{t.feed.empty}</p>
           </div>
         ) : (
           filteredIncidents.map((incident) => {
             const isSelected = selectedIncident?.id === incident.id;
-            const reliability = incident.reliability_score ?? 0.5;
-            const percent = Math.round(reliability * 100);
             const details = formatIncidentDetails(incident, language);
+            const shortAddress = cleanShortAddress(incident.location_name, incident.lat, incident.lng);
+
+            // Style tripartite selon la gravité : Rouge (Danger) / Orange (Tension) / Vert (Safe)
+            const severityTheme = 
+              incident.severity === 'danger'
+                ? {
+                    border: 'border-l-4 border-l-rose-500',
+                    bg: isSelected ? 'bg-rose-950/40 border-rose-500' : 'bg-dark-850/80 border-dark-800 hover:border-rose-500/50',
+                    badge: 'bg-rose-950/60 text-rose-300',
+                  }
+                : incident.severity === 'warning'
+                ? {
+                    border: 'border-l-4 border-l-amber-500',
+                    bg: isSelected ? 'bg-amber-950/40 border-amber-500' : 'bg-dark-850/80 border-dark-800 hover:border-amber-500/50',
+                    badge: 'bg-amber-950/60 text-amber-300',
+                  }
+                : {
+                    border: 'border-l-4 border-l-emerald-500',
+                    bg: isSelected ? 'bg-emerald-950/40 border-emerald-500' : 'bg-dark-850/80 border-dark-800 hover:border-emerald-500/50',
+                    badge: 'bg-emerald-950/60 text-emerald-300',
+                  };
 
             return (
               <div
@@ -177,102 +168,35 @@ export const IncidentFeed: React.FC = () => {
                   if (showTransportWidget) toggleTransportWidget();
                   closeMobileMenu();
                 }}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-dark-800 border-pulse-accent shadow-lg shadow-blue-950/30'
-                    : 'bg-dark-850/60 border-dark-800 hover:border-slate-700'
-                }`}
+                className={`p-3 rounded-xl border transition-all cursor-pointer select-none active:scale-[0.99] ${severityTheme.border} ${severityTheme.bg}`}
               >
-                {/* Header card */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-1.5">
-                    {getSeverityBadge(incident.severity)}
+                {/* Ligne 1 : Émoji + Catégorie Principale (Gauche) & Heure Relative (Droite) */}
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-base select-none leading-none shrink-0">
+                      {details.emoji}
+                    </span>
+                    <span className="text-xs font-bold text-white truncate">
+                      {details.categoryLabel}
+                    </span>
                     {incident.reports_count && incident.reports_count > 1 && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-950/80 text-rose-300 border border-rose-800 flex items-center gap-1">
-                        <span>×{incident.reports_count}</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono font-bold bg-dark-900 text-slate-300 border border-dark-750">
+                        ×{incident.reports_count}
                       </span>
                     )}
-                    <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] bg-dark-950 text-slate-300 font-mono">
-                      <span>{details.emoji}</span>
-                      <span>{details.categoryLabel}</span>
-                    </span>
                   </div>
-                  <div className="flex items-center text-[10px] text-slate-400 font-mono space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{details.timeAgo}</span>
-                  </div>
-                </div>
 
-                {/* Location */}
-                <div className="flex items-start space-x-2 mb-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <h4 className="text-xs font-semibold text-slate-200 leading-tight">
-                    {formatLocationName(incident.location_name, incident.lat, incident.lng)}
-                  </h4>
-                </div>
-
-                {/* Description */}
-                <p className="text-xs text-slate-300 leading-snug line-clamp-2 mb-3">
-                  {details.cleanDescription}
-                </p>
-
-                {/* Reliability Progress Gauge */}
-                <div className="mb-2.5 bg-dark-950/80 p-2 rounded-lg border border-dark-800">
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-                    <span className="flex items-center gap-1">
-                      {reliability >= 0.8 ? (
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                      ) : (
-                        <ShieldAlert className="w-3 h-3 text-amber-400" />
-                      )}
-                      <span>{t.feed.reliability}</span>
-                    </span>
-                    <span className="font-bold text-slate-200">{percent}%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-dark-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        reliability >= 0.8 ? 'bg-emerald-500' : reliability >= 0.6 ? 'bg-amber-500' : 'bg-rose-500'
-                      }`}
-                      style={{ width: `${percent}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Actions & Attribution */}
-                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-dark-800 text-slate-400">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-slate-400 truncate max-w-[150px]" title={details.sourceBadge}>
-                    {details.sourceBadge}
+                  <span className="text-[11px] font-mono text-slate-400 shrink-0">
+                    {details.timeAgo}
                   </span>
+                </div>
 
-                  {/* Upvote & Downvote buttons */}
-                  <div className="flex items-center space-x-1.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        voteIncident(incident.id, 'up');
-                      }}
-                      className="flex items-center space-x-1 px-2 py-0.5 rounded bg-dark-800 hover:bg-slate-700 text-slate-200 transition"
-                      title={t.feed.voteConfirm}
-                    >
-                      <ThumbsUp className="w-3 h-3 text-emerald-400" />
-                      <span className="font-mono font-bold text-[10px]">{incident.upvotes}</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        voteIncident(incident.id, 'down');
-                      }}
-                      className="flex items-center space-x-1 px-2 py-0.5 rounded bg-dark-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition"
-                      title={t.feed.voteDispute}
-                    >
-                      <ThumbsDown className="w-3 h-3 text-rose-400" />
-                      {incident.downvotes !== undefined && incident.downvotes > 0 && (
-                        <span className="font-mono text-[10px]">{incident.downvotes}</span>
-                      )}
-                    </button>
-                  </div>
+                {/* Ligne 2 : Adresse Courte & Épurée */}
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="text-xs font-medium text-slate-200 truncate">
+                    {shortAddress}
+                  </span>
                 </div>
               </div>
             );

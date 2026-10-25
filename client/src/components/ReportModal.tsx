@@ -38,7 +38,7 @@ export const ReportModal: React.FC = () => {
   const [severity, setSeverity] = useState<Severity>('warning');
   const [category, setCategory] = useState<IncidentCategory>('manifestation');
   const [description, setDescription] = useState('');
-  const [source, setSource] = useState('Témoin citoyen sur place');
+  const [source] = useState('Témoin citoyen sur place');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -369,19 +369,7 @@ export const ReportModal: React.FC = () => {
             />
           </div>
 
-          {/* 5. Source */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              {t.reportModal.sourceLabel}
-            </label>
-            <input
-              type="text"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              placeholder={t.reportModal.sourcePlaceholder}
-              className="w-full px-3 py-2 bg-dark-950 border border-dark-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pulse-accent transition"
-            />
-          </div>
+
 
           {/* Footer Submit & Legend with Safe-Area Protection */}
           <div 
