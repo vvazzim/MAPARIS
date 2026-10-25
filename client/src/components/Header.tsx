@@ -1,21 +1,17 @@
 import React from 'react';
 import { 
-  ShieldAlert, 
-  Wifi, 
-  WifiOff, 
   Train, 
   PlusCircle, 
   Compass, 
-  Loader2,
   Menu,
   X
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
+import { ParisLogo } from './ParisLogo';
 
 export const Header: React.FC = () => {
   const { 
-    connectionStatus, 
     incidents, 
     toggleTransportWidget, 
     showTransportWidget,
@@ -32,24 +28,22 @@ export const Header: React.FC = () => {
   const dangerCount = incidents.filter((i) => i.severity === 'danger').length;
   const warningCount = incidents.filter((i) => i.severity === 'warning').length;
   const safeCount = incidents.filter((i) => i.severity === 'safe').length;
-
   const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
 
   return (
     <header className="h-16 border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 select-none">
+      {/* Logo officiel Ville de Paris avec (!) pour les alertes */}
       <div className="flex items-center space-x-3">
-        <div className="relative flex items-center justify-center p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500">
-          <ShieldAlert className="w-6 h-6 animate-pulse" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-          </span>
+        <div className="p-2 rounded-xl bg-dark-800/90 border border-dark-750 text-slate-100 flex items-center justify-center">
+          <ParisLogo className="w-6 h-6" showAlertDot={dangerCount > 0 || warningCount > 0} />
         </div>
         <div>
           <h1 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
             {t.header.title}
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-800">
-              {t.header.liveOsint}
+            {/* Indicateur Live OSINT en VERT */}
+            <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 flex items-center gap-1.5 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>{t.header.liveOsint}</span>
             </span>
           </h1>
           <p className="text-xs text-slate-400 hidden sm:block">
@@ -58,8 +52,8 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Info Status Badges (Non-cliquables - Indicateurs passifs) */}
-      <div className="hidden lg:flex items-center space-x-2.5 text-xs font-mono cursor-default select-none">
+      {/* Info Status Badges (Passifs sur Desktop) */}
+      <div className="hidden xl:flex items-center space-x-2.5 text-xs font-mono cursor-default select-none">
         <div 
           className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-red-950/30 border border-red-900/40 text-red-400"
           title="Nombre d'alertes rouges actives"
@@ -76,16 +70,16 @@ export const Header: React.FC = () => {
         </div>
         <div 
           className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/30 border border-emerald-900/40 text-emerald-400"
-          title="Nombre de zones calmes confirmées"
+          title="Nombre de zones sûres confirmées"
         >
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span>{t.header.safeCount.replace('{count}', String(safeCount))}</span>
         </div>
       </div>
 
-      {/* Boutons d'Action (Clairement cliquables avec effet hover & active) */}
+      {/* Actions & Menu Principal Unique */}
       <div className="flex items-center space-x-2 sm:space-x-3">
-        {/* Safe Routing CTA */}
+        {/* Itinéraire Sûr CTA */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
@@ -99,7 +93,7 @@ export const Header: React.FC = () => {
           <span>{t.header.safeRoute}</span>
         </button>
 
-        {/* Quick Report CTA (Bouton Principal en évidence) */}
+        {/* Bouton Signaler Rapide */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
@@ -113,7 +107,7 @@ export const Header: React.FC = () => {
           <span>{t.header.report}</span>
         </button>
 
-        {/* RATP Transports quick toggle */}
+        {/* Hubs RATP */}
         <button
           onClick={toggleTransportWidget}
           className={`hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer active:scale-95 ${
@@ -132,7 +126,7 @@ export const Header: React.FC = () => {
           )}
         </button>
 
-        {/* Sélecteur de Langue Explicite (Choix intuitif FR / EN) */}
+        {/* Choix Langue FR / EN */}
         <div className="flex items-center bg-dark-950 p-0.5 rounded-xl border border-dark-750">
           <button
             onClick={() => setLanguage('fr')}
@@ -141,7 +135,7 @@ export const Header: React.FC = () => {
                 ? 'bg-pulse-accent text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Passer le site en Français"
+            title="Passer en Français"
           >
             FR
           </button>
@@ -152,48 +146,27 @@ export const Header: React.FC = () => {
                 ? 'bg-pulse-accent text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Switch website to English"
+            title="Switch to English"
           >
             EN
           </button>
         </div>
 
-        {/* Socket Status Indicator (Indicateur passif) */}
-        <div
-          className={`flex items-center space-x-2 px-2.5 sm:px-3 py-1.5 rounded-full border text-xs font-mono select-none cursor-default ${
-            connectionStatus === 'connected'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : connectionStatus === 'reconnecting'
-              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-          }`}
-        >
-          {connectionStatus === 'connected' ? (
-            <>
-              <Wifi className="w-3.5 h-3.5 animate-pulse text-emerald-400" />
-              <span className="hidden sm:inline">{t.header.liveSync}</span>
-            </>
-          ) : connectionStatus === 'reconnecting' ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-              <span className="hidden sm:inline">{t.header.serverWaking}</span>
-            </>
-          ) : (
-            <>
-              <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">{t.header.offline}</span>
-            </>
-          )}
-        </div>
-
-        {/* Mobile Sandwich Menu Button */}
+        {/* Menu Unique Principal (Accessible Mobile & Desktop) */}
         <button
           onClick={toggleMobileMenu}
-          className="lg:hidden p-2 rounded-xl bg-dark-800 text-slate-300 hover:text-white hover:bg-dark-700 transition active:scale-95 cursor-pointer"
-          title="Menu"
-          aria-label="Menu"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-dark-800 hover:bg-dark-750 text-slate-200 border border-dark-700 transition active:scale-95 cursor-pointer shadow-sm"
+          title="Menu Principal"
+          aria-label="Menu Principal"
         >
-          {isMobileMenuOpen ? <X className="w-5 h-5 text-rose-400" /> : <Menu className="w-5 h-5" />}
+          {isMobileMenuOpen ? (
+            <X className="w-5 h-5 text-rose-400" />
+          ) : (
+            <>
+              <Menu className="w-5 h-5 text-slate-300" />
+              <span className="text-xs font-semibold font-mono hidden sm:inline">Menu</span>
+            </>
+          )}
         </button>
       </div>
     </header>

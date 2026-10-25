@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
-  ShieldAlert, 
   PlusCircle, 
   Compass, 
   Train, 
@@ -16,10 +15,13 @@ import {
   Lock,
   List,
   Globe,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  Shield
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
+import { ParisLogo } from './ParisLogo';
 
 export const MobileDrawer: React.FC = () => {
   const {
@@ -42,6 +44,8 @@ export const MobileDrawer: React.FC = () => {
     t,
   } = useIncidentStore();
 
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+
   if (!isMobileMenuOpen) return null;
 
   const dangerCount = incidents.filter((i) => i.severity === 'danger').length;
@@ -50,25 +54,34 @@ export const MobileDrawer: React.FC = () => {
   const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
 
   return (
-    <div className="fixed inset-0 z-[1000] lg:hidden">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[1000] animate-in fade-in duration-200">
+      {/* Backdrop overlay assombri */}
       <div 
-        className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity cursor-pointer"
         onClick={closeMobileMenu}
+        aria-hidden="true"
       />
 
-      {/* Slide-over panel */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-sm bg-dark-900 border-l border-dark-800 shadow-2xl flex flex-col justify-between overflow-y-auto">
+      {/* Slide-over panel (Mobile & Desktop) */}
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10">
+        <div className="w-screen max-w-sm sm:max-w-md bg-dark-900 border-l border-dark-800 shadow-2xl flex flex-col justify-between overflow-y-auto">
           
-          {/* Header */}
-          <div className="p-5 border-b border-dark-800 flex items-center justify-between">
-            <div className="flex items-center space-x-2.5">
-              <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500">
-                <ShieldAlert className="w-5 h-5 animate-pulse" />
+          {/* Header du Menu Unique */}
+          <div className="p-4 sm:p-5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
+            <div className="flex items-center space-x-3">
+              {/* Logo officiel Ville de Paris avec (!) */}
+              <div className="p-2 rounded-xl bg-dark-800 border border-dark-750 flex items-center justify-center">
+                <ParisLogo className="w-6 h-6" showAlertDot={dangerCount > 0 || warningCount > 0} />
               </div>
               <div>
-                <h3 className="font-bold text-white text-base">MaParis</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-white text-base">MaParis</h3>
+                  {/* Indicateur Live OSINT en VERT */}
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-700/60 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Live OSINT</span>
+                  </span>
+                </div>
                 <p className="text-[11px] text-slate-400 font-mono">{t.mobile.menuTitle}</p>
               </div>
             </div>
@@ -76,17 +89,17 @@ export const MobileDrawer: React.FC = () => {
             <button 
               onClick={closeMobileMenu}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-dark-800 transition active:scale-95 cursor-pointer"
-              title="Fermer"
+              title="Fermer le menu"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-5 space-y-6 flex-1">
+          {/* Corps du Menu */}
+          <div className="p-4 sm:p-5 space-y-5 flex-1">
             
-            {/* Language Switcher Bar (Explicit choice FR / EN) */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-dark-850 border border-dark-800">
+            {/* 1. Sélecteur de Langue Explicite FR / EN */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-dark-850 border border-dark-800">
               <div className="flex items-center gap-2 text-xs text-slate-300 font-medium">
                 <Globe className="w-4 h-4 text-pulse-accent" />
                 <span>{language === 'fr' ? 'Langue / Language' : 'Language / Langue'}</span>
@@ -117,16 +130,11 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* Live Metrics Cards (Passive Telemetry - Non cliquables) */}
+            {/* 2. Situation en direct (Indicateurs passifs) - Sans mention "Lecture seule" */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
-                  {t.mobile.liveSituation}
-                </span>
-                <span className="text-[10px] font-mono text-slate-500">
-                  {language === 'fr' ? 'Lecture seule' : 'Read-only'}
-                </span>
-              </div>
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2 block">
+                {t.mobile.liveSituation}
+              </span>
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center select-none cursor-default">
                   <div className="flex items-center justify-center text-red-500 mb-1">
@@ -154,34 +162,13 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Actions (Clearly Cliquables with Chevrons and Hover/Active States) */}
+            {/* 3. Actions Principales */}
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2 block">
                 {t.mobile.mainActions}
               </span>
-              <div className="space-y-2.5">
-                
-                {/* Signaler */}
-                <button
-                  onClick={() => {
-                    closeMobileMenu();
-                    setMobileActiveTab('map');
-                    if (showTransportWidget) toggleTransportWidget();
-                    openReportModal();
-                  }}
-                  className="w-full p-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm flex items-center justify-between shadow-lg shadow-rose-950/50 transition active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <PlusCircle className="w-5 h-5 text-white" />
-                    <div className="text-left">
-                      <div className="font-bold">{t.mobile.reportAction}</div>
-                      <div className="text-[10px] text-rose-100 font-normal">{t.mobile.reportDesc}</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-rose-200" />
-                </button>
-
-                {/* Itinéraire Safe */}
+              <div className="space-y-2">
+                {/* Itinéraire Sûr */}
                 <button
                   onClick={() => {
                     closeMobileMenu();
@@ -189,10 +176,10 @@ export const MobileDrawer: React.FC = () => {
                     if (showTransportWidget) toggleTransportWidget();
                     openSafeRouteModal();
                   }}
-                  className="w-full p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
+                  className="w-full p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-200 font-semibold text-xs flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
-                    <Compass className="w-5 h-5 text-emerald-400" />
+                  <div className="flex items-center gap-2.5">
+                    <Compass className="w-4 h-4 text-emerald-400" />
                     <div className="text-left">
                       <div className="font-bold text-white">{t.mobile.safeRouteAction}</div>
                       <div className="text-[10px] text-emerald-300/80 font-normal">{t.mobile.safeRouteDesc}</div>
@@ -201,17 +188,37 @@ export const MobileDrawer: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-emerald-400" />
                 </button>
 
-                {/* Transports RATP */}
+                {/* Signaler un incident */}
+                <button
+                  onClick={() => {
+                    closeMobileMenu();
+                    setMobileActiveTab('map');
+                    if (showTransportWidget) toggleTransportWidget();
+                    openReportModal();
+                  }}
+                  className="w-full p-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs flex items-center justify-between shadow-lg shadow-rose-950/50 transition active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <PlusCircle className="w-4 h-4 text-white" />
+                    <div className="text-left">
+                      <div className="font-bold">{t.mobile.reportAction}</div>
+                      <div className="text-[10px] text-rose-100 font-normal">{t.mobile.reportDesc}</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-rose-200" />
+                </button>
+
+                {/* Statut Transports RATP */}
                 <button
                   onClick={() => {
                     closeMobileMenu();
                     setMobileActiveTab('map');
                     toggleTransportWidget();
                   }}
-                  className="w-full p-3.5 rounded-xl bg-indigo-950/70 border border-indigo-500/40 hover:bg-indigo-900/60 text-indigo-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
+                  className="w-full p-3 rounded-xl bg-indigo-950/70 border border-indigo-500/40 hover:bg-indigo-900/60 text-indigo-200 font-semibold text-xs flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
-                    <Train className="w-5 h-5 text-indigo-400" />
+                  <div className="flex items-center gap-2.5">
+                    <Train className="w-4 h-4 text-indigo-400" />
                     <div className="text-left">
                       <div className="font-bold text-white">{t.mobile.ratpAction}</div>
                       <div className="text-[10px] text-indigo-300/80 font-normal">{t.mobile.ratpDesc}</div>
@@ -219,11 +226,11 @@ export const MobileDrawer: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     {disruptedStations > 0 ? (
-                      <span className="text-xs bg-rose-600 text-white font-mono font-bold px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] bg-rose-600 text-white font-mono font-bold px-1.5 py-0.5 rounded-full">
                         {disruptedStations}
                       </span>
                     ) : (
-                      <span className="text-xs bg-emerald-900 text-emerald-300 font-mono px-2 py-0.5 rounded">
+                      <span className="text-[10px] bg-emerald-900 text-emerald-300 font-mono px-1.5 py-0.5 rounded">
                         {t.transport.normal}
                       </span>
                     )}
@@ -231,23 +238,23 @@ export const MobileDrawer: React.FC = () => {
                   </div>
                 </button>
 
-                {/* Afficher Flux complet */}
+                {/* Consulter le Flux Complet */}
                 <button
                   onClick={() => {
                     setMobileActiveTab('feed');
                     closeMobileMenu();
                   }}
-                  className="w-full p-3.5 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-200 font-semibold text-sm flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
+                  className="w-full p-3 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-200 font-semibold text-xs flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
                 >
-                  <div className="flex items-center gap-3">
-                    <List className="w-5 h-5 text-pulse-accent" />
+                  <div className="flex items-center gap-2.5">
+                    <List className="w-4 h-4 text-pulse-accent" />
                     <div className="text-left">
                       <div className="font-bold text-white">{t.mobile.viewAlertsAction}</div>
                       <div className="text-[10px] text-slate-400 font-normal">{t.mobile.viewAlertsDesc}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs bg-dark-700 text-slate-300 px-2 py-0.5 rounded font-mono">
+                    <span className="text-[10px] bg-dark-700 text-slate-300 px-1.5 py-0.5 rounded font-mono">
                       {incidents.length}
                     </span>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -256,15 +263,16 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* Cartographie Controls */}
+            {/* 4. Outils de Carte (Affichage cartographique intégré) */}
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2.5 block">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2 block">
                 {t.mobile.mapControls}
               </span>
               <div className="space-y-2">
+                {/* Périmètres de sécurité */}
                 <button
                   onClick={toggleDangerRadius}
-                  className={`w-full p-3 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
+                  className={`w-full p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
                     showDangerRadius 
                       ? 'bg-rose-950/40 border-rose-500/40 text-rose-300' 
                       : 'bg-dark-800/80 border-dark-700 text-slate-400 hover:text-white'
@@ -279,9 +287,10 @@ export const MobileDrawer: React.FC = () => {
                   </span>
                 </button>
 
+                {/* Marqueurs RATP */}
                 <button
                   onClick={toggleTransports}
-                  className={`w-full p-3 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
+                  className={`w-full p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
                     showTransports 
                       ? 'bg-indigo-950/40 border-indigo-500/40 text-indigo-300' 
                       : 'bg-dark-800/80 border-dark-700 text-slate-400 hover:text-white'
@@ -296,29 +305,83 @@ export const MobileDrawer: React.FC = () => {
                   </span>
                 </button>
 
+                {/* Recentrer Paris */}
                 <button
                   onClick={() => {
                     closeMobileMenu();
                     setMobileActiveTab('map');
                     flyTo(48.8566, 2.3522, 13);
                   }}
-                  className="w-full p-3 rounded-xl bg-dark-800/80 border border-dark-700 hover:bg-dark-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99]"
+                  className="w-full p-2.5 rounded-xl bg-dark-800/80 border border-dark-700 hover:bg-dark-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99]"
                 >
                   <Navigation className="w-4 h-4 text-pulse-accent" />
                   <span>{t.mobile.recenterParis}</span>
                 </button>
               </div>
             </div>
+
+            {/* 5. Légende Rétractable / Expansible */}
+            <div className="border border-dark-800 rounded-xl overflow-hidden bg-dark-850/60">
+              <button
+                type="button"
+                onClick={() => setIsLegendOpen(!isLegendOpen)}
+                className="w-full p-3 flex items-center justify-between text-xs font-semibold text-slate-200 hover:bg-dark-800 transition cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-pulse-accent" />
+                  <span>{language === 'fr' ? 'Légende de la Carte' : 'Map Legend'}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isLegendOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isLegendOpen && (
+                <div className="p-3 pt-0 space-y-2 text-xs border-t border-dark-800/60 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-red-950/20 border border-red-500/20">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-500/50" />
+                      <span className="text-red-300 font-medium">{language === 'fr' ? 'Danger Critique' : 'High Danger'}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Rayon 400m' : '400m radius'}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/20 border border-amber-500/20">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50" />
+                      <span className="text-amber-300 font-medium">{language === 'fr' ? 'Tension / Vigilance' : 'Tension / Warning'}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Rayon 250m' : '250m radius'}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-950/20 border border-emerald-500/20">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                      <span className="text-emerald-300 font-medium">{language === 'fr' ? 'Zone Sûre' : 'Safe Area'}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Fluide & Sécurisée' : 'Clear & Secure'}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-indigo-950/20 border border-indigo-500/20">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" />
+                      <span className="text-indigo-300 font-medium">Hubs RATP</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Gares & Métros' : 'Stations'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Footer Anonymat & Statut */}
-          <div className="p-4 border-t border-dark-800 bg-dark-950/80 space-y-2">
+          {/* Footer : Statut Wi-Fi / Connexion (qui disparaît dès la rétraction du menu) */}
+          <div className="p-4 border-t border-dark-800 bg-dark-950/80 space-y-2 shrink-0">
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-slate-400 flex items-center gap-1.5 select-none">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{t.mobile.anonymous}</span>
               </span>
 
+              {/* Indicateur Wi-Fi / Statut Réseau intégré au panneau */}
               <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full select-none cursor-default ${
                 connectionStatus === 'connected' 
                   ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' 
@@ -328,24 +391,24 @@ export const MobileDrawer: React.FC = () => {
               }`}>
                 {connectionStatus === 'connected' ? (
                   <>
-                    <Wifi className="w-3 h-3 text-emerald-400 animate-pulse" />
-                    <span>LIVE</span>
+                    <Wifi className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                    <span>{language === 'fr' ? 'LIVE ACTIF' : 'LIVE'}</span>
                   </>
                 ) : connectionStatus === 'reconnecting' ? (
                   <>
-                    <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />
-                    <span>{language === 'fr' ? 'RÉVEIL' : 'WAKING'}</span>
+                    <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    <span>{language === 'fr' ? 'RECONNEXION' : 'RECONNECTING'}</span>
                   </>
                 ) : (
                   <>
-                    <WifiOff className="w-3 h-3 text-rose-400" />
-                    <span>OFFLINE</span>
+                    <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+                    <span>{language === 'fr' ? 'HORS LIGNE' : 'OFFLINE'}</span>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Author Credit */}
+            {/* Crédit Open Source */}
             <div className="pt-2 border-t border-dark-800/80 flex items-center justify-between text-[11px]">
               <span className="text-slate-400 font-mono">{t.mobile.openSourceProject}</span>
               <a 
