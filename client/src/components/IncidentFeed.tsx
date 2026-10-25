@@ -3,8 +3,7 @@ import {
   Activity, 
   MapPin, 
   Search, 
-  Map as MapIcon,
-  PlusCircle
+  Map as MapIcon
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { Severity } from '../types';
@@ -16,7 +15,6 @@ export const IncidentFeed: React.FC = () => {
     incidents, 
     selectedIncident, 
     setSelectedIncident, 
-    openReportModal,
     flyTo,
     showTransportWidget,
     toggleTransportWidget,
@@ -62,16 +60,6 @@ export const IncidentFeed: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Raccourci Signaler discret sur desktop */}
-          <button
-            onClick={openReportModal}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-semibold transition active:scale-95"
-            title={t.feed.reportButton}
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span className="text-[11px]">{t.header.report}</span>
-          </button>
-
           {/* Bouton Retour Carte sur mobile */}
           <button 
             onClick={() => setMobileActiveTab('map')}

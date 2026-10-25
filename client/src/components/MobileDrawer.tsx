@@ -72,7 +72,7 @@ export const MobileDrawer: React.FC = () => {
               <ParisLogo className="w-8 h-8" showAlertDot={dangerCount > 0 || warningCount > 0} />
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-white text-base">MA<span className="text-rose-500">!</span>Paris</h3>
+                  <h3 className="font-extrabold text-white text-base">MAParis</h3>
                   {/* Indicateur Live OSINT en VERT */}
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-700/60 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

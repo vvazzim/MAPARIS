@@ -146,8 +146,8 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
 
   toggleDangerRadius: () => set((state) => ({ showDangerRadius: !state.showDangerRadius })),
   toggleTransports: () => set((state) => ({ showTransports: !state.showTransports })),
-  toggleTransportWidget: () => set((state) => ({ showTransportWidget: !state.showTransportWidget })),
-  toggleMobileMenu: () => set((state) => ({ isMobileMenuOpen: !state.isMobileMenuOpen })),
+  toggleTransportWidget: () => set((state) => ({ showTransportWidget: !state.showTransportWidget, isMobileMenuOpen: false })),
+  toggleMobileMenu: () => set((state) => ({ isMobileMenuOpen: !state.isMobileMenuOpen, showTransportWidget: false })),
   closeMobileMenu: () => set({ isMobileMenuOpen: false }),
   setMobileActiveTab: (mobileActiveTab) => set({ mobileActiveTab }),
 

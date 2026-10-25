@@ -32,12 +32,12 @@ export const Header: React.FC = () => {
 
   return (
     <header className="h-16 border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 select-none">
-      {/* Logo officiel Ville de Paris avec marque MA!Paris */}
+      {/* Logo officiel Ville de Paris avec marque MAParis */}
       <div className="flex items-center space-x-2.5 sm:space-x-3">
         <ParisLogo className="w-8 h-8 sm:w-9 sm:h-9" showAlertDot={dangerCount > 0 || warningCount > 0} />
         <div>
           <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
-            <span>MA<span className="text-rose-500">!</span>Paris</span>
+            <span>MAParis</span>
             {/* Indicateur Live OSINT en VERT */}
             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 flex items-center gap-1.5 font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
