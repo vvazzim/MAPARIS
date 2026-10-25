@@ -1,1 +1,38 @@
-[]
+[
+  {
+    "id": "inc-1792888134167-suaq6",
+    "lat": 48.866790902634,
+    "lng": 2.325819432664,
+    "lon": 2.325819432664,
+    "location_name": "8 Rue Cambon 75001 Paris",
+    "severity": "danger",
+    "category": "degradation",
+    "description": "🔥 [Danger] Affrontements ou dégradations signalés en direct via MediaManif.",
+    "source": "MediaManif #48160 (mediamanif.org)",
+    "reports_count": 1,
+    "upvotes": 1,
+    "downvotes": 0,
+    "reliability_score": 0.7,
+    "expires_at": "2026-10-25T00:35:57.167Z",
+    "created_at": "2026-10-25T00:28:54.167Z",
+    "updated_at": "2026-10-25T00:28:54.167Z"
+  },
+  {
+    "id": "inc-1792888135181-44298",
+    "lat": 48.920065,
+    "lng": 2.345976,
+    "lon": 2.345976,
+    "location_name": "Centre Paris Pleyel 93200 Saint-Denis",
+    "severity": "danger",
+    "category": "tension",
+    "description": "[Cortège] [Police] LA POLICE PROTÈGE LES MILICES FAFS &; Ce samedi, à Rouen, des militants d’extrême droite se sont organisés via un gro...",
+    "source": "Telegram Live (@cerveauxnondisponibles) (@cerveauxnondisponibles)",
+    "reports_count": 3,
+    "upvotes": 3,
+    "downvotes": 0,
+    "reliability_score": 0.65,
+    "expires_at": "2026-10-25T02:28:55.181Z",
+    "created_at": "2026-10-25T00:28:55.181Z",
+    "updated_at": "2026-10-25T00:28:55.596Z"
+  }
+]
