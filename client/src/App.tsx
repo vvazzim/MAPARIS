@@ -56,7 +56,7 @@ export const App: React.FC = () => {
   }, [setConnectionStatus, addIncident, setIncidents, updateIncident, removeIncident]);
 
   return (
-    <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-dark-950 font-sans">
+    <div className="flex flex-col h-[100vh] h-[100dvh] w-full overflow-hidden bg-dark-950 font-sans overscroll-none select-none fixed inset-0">
       <Header />
       
       <main className="flex-1 flex overflow-hidden relative min-h-0 w-full">

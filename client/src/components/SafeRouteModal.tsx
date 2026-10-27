@@ -129,28 +129,35 @@ export const SafeRouteModal: React.FC = () => {
       <div 
         className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[min(92dvh,780px)] sm:max-w-xl bg-dark-900 border-0 sm:border border-dark-750 sm:rounded-2xl rounded-none shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200"
       >
-        {/* Header */}
-        <div className="px-5 sm:px-6 py-4 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
+        {/* Header avec Safe Area Padding */}
+        <div 
+          className="px-5 sm:px-6 pb-3.5 border-b border-dark-800 flex items-center justify-between bg-dark-950/90 backdrop-blur-md shrink-0"
+          style={{
+            paddingTop: 'max(1rem, calc(0.75rem + env(safe-area-inset-top, 24px)))',
+          }}
+        >
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
               <Compass className="w-5 h-5 animate-spin" style={{ animationDuration: '20s' }} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 {t.safeRouteModal.title}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-slate-400">
                 {t.safeRouteModal.subtitle}
               </p>
             </div>
           </div>
+          {/* Croix de fermeture claire et accessible */}
           <button
+            type="button"
             onClick={closeSafeRouteModal}
-            className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono cursor-pointer active:scale-95"
-            title="Fermer et revenir à la carte"
+            className="w-8 h-8 rounded-full bg-dark-800 hover:bg-dark-750 active:bg-dark-700 border border-dark-700 text-slate-300 hover:text-white transition flex items-center justify-center cursor-pointer active:scale-95 shadow-sm"
+            title="Fermer"
+            aria-label="Fermer"
           >
-            <X className="w-4 h-4 text-rose-400" />
-            <span className="text-[11px] font-semibold">Carte</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 

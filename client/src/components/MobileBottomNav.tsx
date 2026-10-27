@@ -1,11 +1,11 @@
 import React from 'react';
-import { PlusCircle } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 
 /**
- * Bouton d'action flottant (FAB) unique pour mobile.
- * Remplace l'ancienne barre d'onglets pour une carte 100% immersive et dégagée.
- * Toutes les autres options (flux, itinéraires, hubs, filtres) sont dans le menu escamotable.
+ * Bouton Flottant "Signaler" Minimaliste (Mobile FAB Pill).
+ * Design ultra-épuré, semi-transparent avec flou d'arrière-plan (glassmorphism).
+ * Flotte discrètement en bas au centre sans obstruer la carte ni les attributions Leaflet.
  */
 export const MobileBottomNav: React.FC = () => {
   const {
@@ -15,10 +15,9 @@ export const MobileBottomNav: React.FC = () => {
     isSafeRouteModalOpen,
     isMobileMenuOpen,
     showTransportWidget,
-    t,
   } = useIncidentStore();
 
-  // Ne pas afficher si l'utilisateur est déjà dans le flux plein écran ou si un tiroir/modale est ouvert
+  // Masquer lorsque l'utilisateur consulte le flux ou qu'une modale/tiroir est ouvert
   if (
     mobileActiveTab === 'feed' || 
     isReportModalOpen || 
@@ -33,22 +32,19 @@ export const MobileBottomNav: React.FC = () => {
     <div 
       className="lg:hidden fixed left-1/2 -translate-x-1/2 z-30 pointer-events-auto select-none"
       style={{
-        bottom: 'max(1.25rem, calc(0.75rem + env(safe-area-inset-bottom, 14px)))',
+        bottom: 'max(1.75rem, calc(1rem + env(safe-area-inset-bottom, 16px)))',
       }}
     >
       <button
         type="button"
         onClick={openReportModal}
-        className="flex items-center gap-2.5 px-6 py-3 rounded-full bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 hover:from-rose-500 hover:to-rose-400 text-white font-bold text-xs font-mono uppercase tracking-wider shadow-2xl border border-rose-400/30 active:scale-95 transition-all duration-150 cursor-pointer backdrop-blur-md"
-        style={{
-          boxShadow: '0 12px 28px -4px rgba(225, 29, 72, 0.45), 0 8px 16px -6px rgba(0, 0, 0, 0.6)',
-        }}
-        aria-label={t.mobile.reportAction}
+        className="flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-dark-900/80 hover:bg-dark-850/90 active:bg-dark-800 backdrop-blur-xl border border-dark-700/80 hover:border-rose-500/50 text-slate-200 text-xs font-semibold shadow-xl shadow-black/50 transition-all duration-150 active:scale-95 cursor-pointer"
+        aria-label="Signaler un incident"
       >
-        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20 shrink-0">
-          <PlusCircle className="w-4 h-4 text-white" />
+        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30">
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
         </span>
-        <span className="font-extrabold">{t.mobile.reportAction}</span>
+        <span className="tracking-wide text-[11px] font-medium text-slate-100">Signaler</span>
       </button>
     </div>
   );

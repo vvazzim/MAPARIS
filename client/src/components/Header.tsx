@@ -31,7 +31,13 @@ export const Header: React.FC = () => {
   const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
 
   return (
-    <header className="h-16 border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 select-none">
+    <header 
+      className="border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 select-none shrink-0"
+      style={{
+        height: 'calc(4rem + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+      }}
+    >
       {/* Logo officiel Ville de Paris avec marque MAParis */}
       <div className="flex items-center space-x-2.5 sm:space-x-3">
         <ParisLogo className="w-8 h-8 sm:w-9 sm:h-9" showAlertDot={dangerCount > 0 || warningCount > 0} />
