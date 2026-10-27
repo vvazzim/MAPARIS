@@ -170,8 +170,8 @@ export class MediaManifService {
         if (!isInsideIdfArea) continue;
         parisCount++;
 
-        // 2. Filtre de fraîcheur : priorité aux points en direct (old=0) ou de moins de 2 heures
-        if (isOld && ageSec > 7200) {
+        // 2. Filtre de fraîcheur stricte : uniquement les points en direct récents (< 30 minutes, fini les 120min)
+        if (isOld || ageSec > 1800) {
           continue;
         }
 
@@ -187,8 +187,8 @@ export class MediaManifService {
           addressName = getReadableLocation(lat, lng);
         }
 
-        // 5. Ingestion avec clustering et TTL dynamique plafonné strictement à 2h (7200s)
-        const remainingTtlSec = Math.max(300, 7200 - ageSec);
+        // 5. Ingestion avec clustering et TTL dynamique plafonné à 30 min max (1800s)
+        const remainingTtlSec = Math.max(300, 1800 - ageSec);
         const { incident, isClusterMerge } = await incidentRepository.processIncidentReport({
           lat,
           lng,
@@ -219,11 +219,11 @@ export class MediaManifService {
         clusteredMerged += mergedCount;
       }
 
-      // 6. RÈGLE STRICTE : Si un point MediaManif a disparu du flux MediaManif OU dépasse 2 heures -> SUPPRIMÉ IMMÉDIATEMENT !
+      // 6. RÈGLE STRICTE : Si un point MediaManif a disparu du flux MediaManif OU dépasse 30 minutes -> SUPPRIMÉ IMMÉDIATEMENT !
       const liveMediaManifIds = new Set(rawPoints.map((p) => String(p.id)));
       const allIncidents = await incidentRepository.getAll({ limit: 1000 });
       const nowMs = Date.now();
-      const twoHoursMs = 2 * 3600 * 1000;
+      const maxAgeMs = 30 * 60 * 1000; // 30 minutes max au lieu de 120min
       let expiredMediaManifCount = 0;
 
       for (const inc of allIncidents) {
@@ -231,18 +231,18 @@ export class MediaManifService {
           const idMatch = inc.source.match(/MediaManif\s*#(\d+)/i);
           const mmId = idMatch ? idMatch[1] : null;
 
-          // Disparu du nouveau fetch OU plus de 2 heures écoulées
+          // Disparu du nouveau fetch OU plus de 30 minutes écoulées
           const isDisappearedFromMediaManif = mmId ? !liveMediaManifIds.has(mmId) : false;
           const ageMs = nowMs - new Date(inc.created_at).getTime();
-          const isOverTwoHours = ageMs >= twoHoursMs || new Date(inc.expires_at).getTime() <= nowMs;
+          const isOverMaxAge = ageMs >= maxAgeMs || new Date(inc.expires_at).getTime() <= nowMs;
 
-          if (isDisappearedFromMediaManif || isOverTwoHours) {
+          if (isDisappearedFromMediaManif || isOverMaxAge) {
             await incidentRepository.deleteById(inc.id);
             broadcastIncidentExpired(inc.id);
             expiredMediaManifCount++;
             console.log(
-              `🧹 [MediaManif Sync] Signalement [${inc.id}] retiré (${
-                isDisappearedFromMediaManif ? 'disparu du flux MediaManif' : 'durée > 2h dépassée'
+              `🧹 [MediaManif Sync] Signalement [${inc.id}] retiré immédiatement (${
+                isDisappearedFromMediaManif ? 'disparu du flux MediaManif' : 'durée > 30min dépassée'
               })`
             );
           }

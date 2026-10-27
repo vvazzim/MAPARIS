@@ -153,14 +153,22 @@ export class IncidentRepository {
       if (fs.existsSync(this.storagePath)) {
         const raw = fs.readFileSync(this.storagePath, 'utf-8');
         const list: Incident[] = JSON.parse(raw);
-        list.forEach((item) => this.inMemoryCache.set(item.id, item));
+        const now = Date.now();
+        list.forEach((item) => {
+          // Ne conserver que les vrais incidents non expirés (aucun inc-paris-* factice)
+          if (!item.id.startsWith('inc-paris-') && !item.resolved && new Date(item.expires_at).getTime() > now) {
+            this.inMemoryCache.set(item.id, item);
+          }
+        });
+        this.persistLocal();
       } else {
-        this.seedInitialData();
+        this.inMemoryCache.clear();
         this.persistLocal();
       }
       await this.mergeAllOverlappingIncidents(0.50);
     } catch {
-      this.seedInitialData();
+      this.inMemoryCache.clear();
+      this.persistLocal();
     }
   }
 
@@ -195,79 +203,8 @@ export class IncidentRepository {
   }
 
   private seedInitialData() {
-    const now = Date.now();
-    const seed: Incident[] = [
-      {
-        id: 'inc-paris-1',
-        lat: 48.8675,
-        lng: 2.3638,
-        lon: 2.3638,
-        location_name: 'Place de la République 75011 Paris',
-        severity: 'danger',
-        category: 'manifestation',
-        description: 'Rassemblement important avec tensions, feux de poubelles et gaz lacrymogènes en marge du cortège.',
-        source: 'Signalement vérifié',
-        reports_count: 5,
-        upvotes: 64,
-        downvotes: 3,
-        reliability_score: 0.95,
-        expires_at: new Date(now + 120 * 60000).toISOString(),
-        created_at: new Date(now - 15 * 60000).toISOString(),
-      },
-      {
-        id: 'inc-paris-2',
-        lat: 48.8532,
-        lng: 2.3698,
-        lon: 2.3698,
-        location_name: 'Place de la Bastille 75011 Paris',
-        severity: 'warning',
-        category: 'tension',
-        description: 'Barrages policiers et filtrage des piétons boulevard Beaumarchais et rue de la Roquette.',
-        source: 'Signalement citoyen',
-        reports_count: 3,
-        upvotes: 28,
-        downvotes: 2,
-        reliability_score: 0.88,
-        expires_at: new Date(now + 90 * 60000).toISOString(),
-        created_at: new Date(now - 35 * 60000).toISOString(),
-      },
-      {
-        id: 'inc-paris-3',
-        lat: 48.8656,
-        lng: 2.3212,
-        lon: 2.3212,
-        location_name: 'Place de la Concorde 75008 Paris',
-        severity: 'safe',
-        category: 'calme',
-        description: 'Zone totalement dégagée et sécurisée. Métro et bus fonctionnent normalement.',
-        source: 'Signalement vérifié Préfecture',
-        reports_count: 4,
-        upvotes: 41,
-        downvotes: 1,
-        reliability_score: 0.98,
-        expires_at: new Date(now + 60 * 60000).toISOString(),
-        created_at: new Date(now - 75 * 60000).toISOString(),
-      },
-      {
-        id: 'inc-paris-4',
-        lat: 48.8606,
-        lng: 2.3476,
-        lon: 2.3476,
-        location_name: 'Châtelet - Les Halles 75001 Paris',
-        severity: 'warning',
-        category: 'fermeture_station',
-        description: 'Forte affluence inhabituelle et accès partiel restreint porte Lescot suite à un mouvement de foule.',
-        source: 'Signalement citoyen',
-        reports_count: 2,
-        upvotes: 19,
-        downvotes: 0,
-        reliability_score: 0.92,
-        expires_at: new Date(now + 45 * 60000).toISOString(),
-        created_at: new Date(now - 20 * 60000).toISOString(),
-      },
-    ];
-
-    seed.forEach((item) => this.inMemoryCache.set(item.id, item));
+    // Mode Production Réelle : ZÉRO fausses données factices injectées.
+    // Si la ville est calme, la carte est propre et vide.
   }
 
   /**
@@ -417,11 +354,11 @@ export class IncidentRepository {
         nearby.severity = 'danger';
       }
 
-      // Prolongation dynamique du TTL (+30 minutes, max 2h pour MediaManif, max 6h pour citoyen)
+      // Prolongation dynamique courte : max 30 min pour MediaManif, max 60 min pour citoyen (fini les 120min !)
       const isMediaManif = (nearby.source && nearby.source.includes('MediaManif')) || (data.source && data.source.includes('MediaManif'));
-      const maxLifespanMs = isMediaManif ? 2 * 3600 * 1000 : 6 * 3600 * 1000;
+      const maxLifespanMs = isMediaManif ? 30 * 60 * 1000 : 60 * 60 * 1000;
       const maxGlobalExpiry = new Date(createdAt.getTime() + maxLifespanMs);
-      const extendedExpiry = new Date(currentExpiry.getTime() + (isMediaManif ? 20 * 60 * 1000 : 30 * 60 * 1000));
+      const extendedExpiry = new Date(currentExpiry.getTime() + (isMediaManif ? 10 * 60 * 1000 : 15 * 60 * 1000));
       nearby.expires_at = (extendedExpiry > maxGlobalExpiry ? maxGlobalExpiry : extendedExpiry).toISOString();
 
       // Mise à jour de la description avec le signalement le plus récent (strictement limité à 160 caractères)
@@ -439,9 +376,9 @@ export class IncidentRepository {
     // CAS 2 : Aucun périmètre croisé à >50% -> Création d'un NOUVEAU point
     // =========================================================================
     const now = new Date();
-    // TTL dynamique : respecte ttlSeconds si fourni, sinon max 2h pour MediaManif, 1h pour signalement citoyen standard
+    // TTL dynamique réactif : 20 min MediaManif, 30 min citoyen (suppression rapide, plus de 120min)
     const isMediaManif = data.source && data.source.includes('MediaManif');
-    const defaultTtlSec = isMediaManif ? 7200 : 3600;
+    const defaultTtlSec = isMediaManif ? 1200 : 1800; // 20 min pour MediaManif, 30 min pour citoyen
     const ttlMs = (data.ttlSeconds !== undefined ? data.ttlSeconds : defaultTtlSec) * 1000;
     const baseExpiry = new Date(now.getTime() + ttlMs);
 
