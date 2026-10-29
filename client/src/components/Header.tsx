@@ -95,8 +95,8 @@ export const Header: React.FC = () => {
           title="Calculer un trajet Métro & RER avec heure exacte et compte à rebours"
         >
           <Train className="w-3.5 h-3.5 text-white" />
-          <span className="hidden sm:inline">Trajet Métro</span>
-          <span className="sm:hidden text-[11px] font-bold">Métro</span>
+          <span className="hidden sm:inline">Trajets & Horaires</span>
+          <span className="sm:hidden text-[11px] font-bold">Transports</span>
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse hidden xs:inline-block" />
         </button>
 

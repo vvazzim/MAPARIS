@@ -183,11 +183,11 @@ export const MobileDrawer: React.FC = () => {
                     <Train className="w-4 h-4 text-indigo-300" />
                     <div className="text-left">
                       <div className="font-bold flex items-center gap-1.5">
-                        <span>Trajet Métro & RER en Direct</span>
+                        <span>Trajets & Horaires RATP en Direct</span>
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       </div>
                       <div className="text-[10px] text-indigo-200/80 font-normal">
-                        Heure exacte de départ & décompte des minutes
+                        Train, Métro, Tram, Bus · Décompte & Horaires réels
                       </div>
                     </div>
                   </div>
