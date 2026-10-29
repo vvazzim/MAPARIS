@@ -31,6 +31,7 @@ export const MobileDrawer: React.FC = () => {
     connectionStatus,
     openReportModal,
     openSafeRouteModal,
+    openMetroRouteModal,
     showTransportWidget,
     toggleTransportWidget,
     toggleDangerRadius,
@@ -168,6 +169,31 @@ export const MobileDrawer: React.FC = () => {
                 {t.mobile.mainActions}
               </span>
               <div className="space-y-2">
+                {/* Trajet Métro & RER avec Décompte & Heure de départ */}
+                <button
+                  onClick={() => {
+                    closeMobileMenu();
+                    setMobileActiveTab('map');
+                    if (showTransportWidget) toggleTransportWidget();
+                    openMetroRouteModal();
+                  }}
+                  className="w-full p-3 rounded-xl bg-indigo-900/80 border border-indigo-400/50 hover:bg-indigo-800/80 text-white font-semibold text-xs flex items-center justify-between shadow-lg shadow-indigo-950/40 transition active:scale-[0.98] cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Train className="w-4 h-4 text-indigo-300" />
+                    <div className="text-left">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>Trajet Métro & RER en Direct</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      </div>
+                      <div className="text-[10px] text-indigo-200/80 font-normal">
+                        Heure exacte de départ & décompte des minutes
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-indigo-300" />
+                </button>
+
                 {/* Itinéraire Sûr */}
                 <button
                   onClick={() => {

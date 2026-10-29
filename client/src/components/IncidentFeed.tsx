@@ -49,8 +49,11 @@ export const IncidentFeed: React.FC = () => {
         ? 'flex fixed inset-0 z-30 lg:static lg:w-96'
         : 'hidden lg:flex lg:w-96'
     }`}>
-      {/* En-tête épuré */}
-      <div className="p-3.5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80">
+      {/* En-tête épuré avec Safe Area */}
+      <div 
+        style={{ paddingTop: 'max(0.875rem, calc(0.5rem + env(safe-area-inset-top, 0px)))' }}
+        className="p-3.5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0"
+      >
         <div className="flex items-center space-x-2">
           <Activity className="w-4 h-4 text-pulse-accent animate-pulse" />
           <h2 className="font-bold text-sm text-white">{t.feed.title}</h2>
@@ -63,10 +66,11 @@ export const IncidentFeed: React.FC = () => {
           {/* Bouton Retour Carte sur mobile */}
           <button 
             onClick={() => setMobileActiveTab('map')}
-            className="lg:hidden p-1.5 rounded-lg bg-dark-800 text-slate-300 hover:text-white border border-dark-700"
+            className="lg:hidden px-2.5 py-1.5 rounded-lg bg-dark-800 text-slate-300 hover:text-white border border-dark-700 flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
             title={t.feed.backToMap}
           >
             <MapIcon className="w-4 h-4 text-pulse-accent" />
+            <span>Carte</span>
           </button>
         </div>
       </div>

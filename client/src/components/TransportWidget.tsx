@@ -101,7 +101,7 @@ const StationDepartureBoard: React.FC<{ station: MetroStationStatus }> = ({ stat
 };
 
 export const TransportWidget: React.FC = () => {
-  const { showTransportWidget, toggleTransportWidget, flyTo, setMobileActiveTab, t } = useIncidentStore();
+  const { showTransportWidget, toggleTransportWidget, flyTo, setMobileActiveTab, openMetroRouteModal, t } = useIncidentStore();
   const [filter, setFilter] = useState<'all' | 'disrupted'>('all');
   const [tick, setTick] = useState(0);
 
@@ -198,6 +198,20 @@ export const TransportWidget: React.FC = () => {
           </div>
         </div>
 
+        {/* CTA Rapide Itinéraire Métro */}
+        <div className="p-2.5 bg-dark-950/80 border-b border-dark-800 shrink-0">
+          <button
+            onClick={() => {
+              toggleTransportWidget();
+              openMetroRouteModal();
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold font-mono transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-950 active:scale-[0.98]"
+          >
+            <Train className="w-3.5 h-3.5" />
+            <span>Calculer un Trajet en Direct (Compte à Rebours)</span>
+          </button>
+        </div>
+
         {/* Filter Tabs */}
         <div className="flex p-2 bg-dark-900 border-b border-dark-800/80 gap-1 text-xs shrink-0">
           <button
@@ -283,17 +297,30 @@ export const TransportWidget: React.FC = () => {
                   </p>
                 )}
 
-                <button
-                  onClick={() => {
-                    flyTo(station.lat, station.lng, 16);
-                    toggleTransportWidget();
-                    setMobileActiveTab('map');
-                  }}
-                  className="mt-2.5 w-full py-2 px-3 rounded-lg bg-dark-800 hover:bg-indigo-950 border border-dark-700 hover:border-indigo-700 text-slate-200 hover:text-indigo-300 text-xs font-medium flex items-center justify-center space-x-2 transition cursor-pointer"
-                >
-                  <span>{t.transport.locateOnMap}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
-                </button>
+                <div className="grid grid-cols-2 gap-2 mt-2.5">
+                  <button
+                    onClick={() => {
+                      toggleTransportWidget();
+                      openMetroRouteModal(station.id);
+                    }}
+                    className="py-2 px-2.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/40 hover:border-indigo-400 text-indigo-300 hover:text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                  >
+                    <Train className="w-3.5 h-3.5" />
+                    <span>Trajet Métro</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      flyTo(station.lat, station.lng, 16);
+                      toggleTransportWidget();
+                      setMobileActiveTab('map');
+                    }}
+                    className="py-2 px-2.5 rounded-lg bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-200 text-xs font-medium flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                  >
+                    <span>{t.transport.locateOnMap}</span>
+                    <ExternalLink className="w-3 h-3 text-slate-400" />
+                  </button>
+                </div>
               </div>
             );
           })}

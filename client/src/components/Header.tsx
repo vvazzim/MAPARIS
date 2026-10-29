@@ -17,6 +17,7 @@ export const Header: React.FC = () => {
     showTransportWidget,
     openReportModal,
     openSafeRouteModal,
+    openMetroRouteModal,
     isMobileMenuOpen,
     toggleMobileMenu,
     setMobileActiveTab,
@@ -32,7 +33,7 @@ export const Header: React.FC = () => {
 
   return (
     <header 
-      className="border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 select-none shrink-0"
+      className="border-b border-dark-800 bg-dark-900/95 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between z-50 select-none shrink-0 touch-none"
       style={{
         height: 'calc(4rem + env(safe-area-inset-top, 0px))',
         paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -82,8 +83,24 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Actions & Menu Principal Unique */}
-      <div className="flex items-center space-x-2 sm:space-x-3">
-        {/* Itinéraire Sûr CTA */}
+      <div className="flex items-center space-x-1.5 sm:space-x-2.5">
+        {/* Trajet Métro & RER (Visible Mobile & Desktop avec Heure de départ & Compte à rebours) */}
+        <button
+          onClick={() => {
+            setMobileActiveTab('map');
+            if (showTransportWidget) toggleTransportWidget();
+            openMetroRouteModal();
+          }}
+          className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-950/60 border border-indigo-400/40 transition active:scale-95 cursor-pointer"
+          title="Calculer un trajet Métro & RER avec heure exacte et compte à rebours"
+        >
+          <Train className="w-3.5 h-3.5 text-white" />
+          <span className="hidden sm:inline">Trajet Métro</span>
+          <span className="sm:hidden text-[11px] font-bold">Métro</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse hidden xs:inline-block" />
+        </button>
+
+        {/* Itinéraire Sûr Piéton CTA */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
@@ -97,18 +114,18 @@ export const Header: React.FC = () => {
           <span>{t.header.safeRoute}</span>
         </button>
 
-        {/* Bouton Signaler Rapide */}
+        {/* Bouton Signaler Rapide (Accessible Mobile & Desktop) */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
             if (showTransportWidget) toggleTransportWidget();
             openReportModal();
           }}
-          className="hidden sm:flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950/80 border border-rose-400/30 transition active:scale-95 cursor-pointer"
+          className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950/80 border border-rose-400/30 transition active:scale-95 cursor-pointer"
           title="Diffuser une alerte citoyenne"
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>{t.header.report}</span>
+          <PlusCircle className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">{t.header.report}</span>
         </button>
 
         {/* Hubs RATP */}

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Incident, FilterOptions, SafeRouteResult } from '../types';
 import { safeFetchJson } from '../services/api';
 import { detectDefaultLanguage, Language, translations } from '../i18n/translations';
+import { MetroRoutePlan } from '../services/metroRoutingService';
 
 interface IncidentState {
   incidents: Incident[];
@@ -19,6 +20,9 @@ interface IncidentState {
   // Modals & Drawers
   isReportModalOpen: boolean;
   isSafeRouteModalOpen: boolean;
+  isMetroRouteModalOpen: boolean;
+  metroRouteOrigin: string | null;
+  metroRouteDestination: string | null;
   showTransportWidget: boolean;
   isMobileMenuOpen: boolean;
   mobileActiveTab: 'map' | 'feed';
@@ -32,6 +36,11 @@ interface IncidentState {
   activeSafeRoute: SafeRouteResult | null;
   selectedRouteIndex: number;
   setSelectedRouteIndex: (idx: number) => void;
+
+  // Active Metro Route on Map
+  activeMetroRoute: MetroRoutePlan | null;
+  setActiveMetroRoute: (route: MetroRoutePlan | null) => void;
+  clearMetroRoute: () => void;
 
   // Actions
   setIncidents: (incidents: Incident[]) => void;
@@ -53,6 +62,8 @@ interface IncidentState {
   closeReportModal: () => void;
   openSafeRouteModal: () => void;
   closeSafeRouteModal: () => void;
+  openMetroRouteModal: (origin?: string, destination?: string) => void;
+  closeMetroRouteModal: () => void;
   setActiveSafeRoute: (route: SafeRouteResult | null) => void;
   clearSafeRoute: () => void;
   voteIncident: (id: string, type: 'up' | 'down') => Promise<void>;
@@ -84,6 +95,9 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
     },
     isReportModalOpen: false,
     isSafeRouteModalOpen: false,
+    isMetroRouteModalOpen: false,
+    metroRouteOrigin: null,
+    metroRouteDestination: null,
     showTransportWidget: false,
     isMobileMenuOpen: false,
     mobileActiveTab: 'map',
@@ -91,6 +105,7 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
     showDangerRadius: true,
     showTransports: true,
     activeSafeRoute: null,
+    activeMetroRoute: null,
     selectedRouteIndex: 0,
     setSelectedRouteIndex: (selectedRouteIndex) => set({ selectedRouteIndex }),
 
@@ -157,8 +172,21 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
   openSafeRouteModal: () => set({ isSafeRouteModalOpen: true, isMobileMenuOpen: false }),
   closeSafeRouteModal: () => set({ isSafeRouteModalOpen: false }),
 
+  openMetroRouteModal: (origin, destination) =>
+    set({
+      isMetroRouteModalOpen: true,
+      metroRouteOrigin: origin || null,
+      metroRouteDestination: destination || null,
+      isMobileMenuOpen: false,
+      showTransportWidget: false,
+    }),
+  closeMetroRouteModal: () => set({ isMetroRouteModalOpen: false }),
+
   setActiveSafeRoute: (route) => set({ activeSafeRoute: route, selectedRouteIndex: 0 }),
   clearSafeRoute: () => set({ activeSafeRoute: null, selectedRouteIndex: 0 }),
+
+  setActiveMetroRoute: (route) => set({ activeMetroRoute: route }),
+  clearMetroRoute: () => set({ activeMetroRoute: null }),
 
   voteIncident: async (id: string, type: 'up' | 'down') => {
     try {

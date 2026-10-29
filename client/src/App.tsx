@@ -5,6 +5,7 @@ import { IncidentFeed } from './components/IncidentFeed';
 import { TransportWidget } from './components/TransportWidget';
 import { ReportModal } from './components/ReportModal';
 import { SafeRouteModal } from './components/SafeRouteModal';
+import { MetroRouteModal } from './components/MetroRouteModal';
 import { MobileDrawer } from './components/MobileDrawer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { socket, initSocketListeners } from './services/socket';
@@ -55,6 +56,33 @@ export const App: React.FC = () => {
     };
   }, [setConnectionStatus, addIncident, setIncidents, updateIncident, removeIncident]);
 
+  // Verrouillage anti-défilement / anti-rebond sur mobile pour que l'écran ne descende jamais
+  useEffect(() => {
+    const handleTouchMove = (e: TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isScrollable = target?.closest('.overflow-y-auto, .overflow-auto');
+      if (!isScrollable && e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    const lockScroll = () => {
+      if (window.scrollY !== 0 || window.scrollX !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('scroll', lockScroll, { passive: true });
+    window.addEventListener('resize', lockScroll, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('scroll', lockScroll);
+      window.removeEventListener('resize', lockScroll);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-[100vh] h-[100dvh] w-full overflow-hidden bg-dark-950 font-sans overscroll-none select-none fixed inset-0">
       <Header />
@@ -83,6 +111,9 @@ export const App: React.FC = () => {
 
       {/* Safe Routing Planner Modal */}
       <SafeRouteModal />
+
+      {/* Real-time Metro & RER Trip Planner Modal */}
+      <MetroRouteModal />
     </div>
   );
 };
