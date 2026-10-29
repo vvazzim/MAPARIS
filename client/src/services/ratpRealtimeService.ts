@@ -398,6 +398,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
       { destination: 'Athis-Mons - Porte de l\'Essonne', code: 'ATH' },
     ],
   },
+  'T8': {
+    name: 'T8',
+    type: 'tram',
+    bg: '#6E750E',
+    text: '#FFFFFF',
+    peakHeadwayMin: 4,
+    offPeakHeadwayMin: 7,
+    directions: [
+      { destination: 'Saint-Denis - Porte de Paris', code: 'SDE' },
+      { destination: 'Épinay-Orgemont / Villetaneuse', code: 'EPI' },
+    ],
+  },
   'T9': {
     name: 'T9',
     type: 'tram',
@@ -408,6 +420,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
     directions: [
       { destination: 'Porte de Choisy', code: 'CHO' },
       { destination: 'Orly - Gaston Viens', code: 'ORL' },
+    ],
+  },
+  'T11': {
+    name: 'T11',
+    type: 'tram',
+    bg: '#DE4C8A',
+    text: '#FFFFFF',
+    peakHeadwayMin: 6,
+    offPeakHeadwayMin: 10,
+    directions: [
+      { destination: 'Épinay-sur-Seine', code: 'EPI' },
+      { destination: 'Le Bourget', code: 'BOU' },
     ],
   },
 
@@ -448,6 +472,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
       { destination: 'Porte d\'Orléans', code: 'ORL' },
     ],
   },
+  'Bus 54': {
+    name: '54',
+    type: 'bus',
+    bg: '#83286B',
+    text: '#FFFFFF',
+    peakHeadwayMin: 4.5,
+    offPeakHeadwayMin: 8,
+    directions: [
+      { destination: 'Asnières-Gennevilliers', code: 'ASN' },
+      { destination: 'Porte d\'Aubervilliers (via P. Clichy)', code: 'AUB' },
+    ],
+  },
   'Bus 62': {
     name: '62',
     type: 'bus',
@@ -458,6 +494,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
     directions: [
       { destination: 'Porte de Saint-Cloud', code: 'CLO' },
       { destination: 'Porte de France', code: 'FRA' },
+    ],
+  },
+  'Bus 66': {
+    name: '66',
+    type: 'bus',
+    bg: '#00643C',
+    text: '#FFFFFF',
+    peakHeadwayMin: 5,
+    offPeakHeadwayMin: 9,
+    directions: [
+      { destination: 'Saint-Ouen - Les Docks', code: 'OUE' },
+      { destination: 'Opéra (via Porte de Clichy)', code: 'OPE' },
     ],
   },
   'Bus 72': {
@@ -472,6 +520,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
       { destination: 'Parc de Saint-Cloud', code: 'CLO' },
     ],
   },
+  'Bus 74': {
+    name: '74',
+    type: 'bus',
+    bg: '#C5A300',
+    text: '#000000',
+    peakHeadwayMin: 5,
+    offPeakHeadwayMin: 9,
+    directions: [
+      { destination: 'Clichy - Berges de Seine', code: 'CLI' },
+      { destination: 'Châtelet', code: 'CHA' },
+    ],
+  },
   'Bus 80': {
     name: '80',
     type: 'bus',
@@ -482,6 +542,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
     directions: [
       { destination: 'Porte de Versailles', code: 'VER' },
       { destination: 'Mairie du 18e - Jules Joffrin', code: '18E' },
+    ],
+  },
+  'Bus 85': {
+    name: '85',
+    type: 'bus',
+    bg: '#FF7E2E',
+    text: '#000000',
+    peakHeadwayMin: 5,
+    offPeakHeadwayMin: 8.5,
+    directions: [
+      { destination: 'Saint-Ouen - Mairie', code: 'OUE' },
+      { destination: 'Châtelet', code: 'CHA' },
     ],
   },
   'Bus 91': {
@@ -506,6 +578,18 @@ export const RATP_LINES_METADATA: Record<string, LineMetadata> = {
     directions: [
       { destination: 'Gare Montparnasse', code: 'MON' },
       { destination: 'Porte des Lilas', code: 'LIL' },
+    ],
+  },
+  'Bus 173': {
+    name: '173',
+    type: 'bus',
+    bg: '#5291CE',
+    text: '#FFFFFF',
+    peakHeadwayMin: 6,
+    offPeakHeadwayMin: 10,
+    directions: [
+      { destination: 'Porte de Clichy', code: 'CLI' },
+      { destination: 'La Courneuve - 8 Mai 1945', code: 'COU' },
     ],
   },
   'N01': {

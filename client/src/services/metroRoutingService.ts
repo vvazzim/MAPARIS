@@ -317,6 +317,177 @@ export const TRANSIT_STATIONS: TransitStation[] = [
     lng: 2.1356,
     district: 'Versailles (78)',
   },
+  {
+    id: 'station-saint-ouen',
+    name: 'Saint-Ouen (Gare)',
+    lines: ['M14', 'RER C', 'Bus 66', 'Bus 173'],
+    types: ['metro', 'rer', 'bus'],
+    lat: 48.9038,
+    lng: 2.3252,
+    district: 'Saint-Ouen (93)',
+  },
+  {
+    id: 'station-mairie-de-saint-ouen',
+    name: 'Mairie de Saint-Ouen',
+    lines: ['M13', 'M14', 'Bus 85', 'Bus 173'],
+    types: ['metro', 'bus'],
+    lat: 48.9118,
+    lng: 2.3338,
+    district: 'Saint-Ouen (93)',
+  },
+  {
+    id: 'station-les-courtilles',
+    name: 'Asnières-Gennevilliers Les Courtilles',
+    lines: ['M13', 'T1', 'Bus 54'],
+    types: ['metro', 'tram', 'bus'],
+    lat: 48.9308,
+    lng: 2.2842,
+    district: 'Asnières (92)',
+  },
+  {
+    id: 'station-gabriel-peri',
+    name: 'Gabriel Péri',
+    lines: ['M13', 'Bus 54'],
+    types: ['metro', 'bus'],
+    lat: 48.9168,
+    lng: 2.2995,
+    district: 'Asnières / Gennevilliers (92)',
+  },
+  {
+    id: 'station-place-de-clichy',
+    name: 'Place de Clichy',
+    lines: ['M2', 'M13', 'Bus 54', 'Bus 80'],
+    types: ['metro', 'bus'],
+    lat: 48.8834,
+    lng: 2.3275,
+    district: 'Paris 8e/9e/17e/18e',
+  },
+  {
+    id: 'station-saint-denis-universite',
+    name: 'Saint-Denis Université',
+    lines: ['M13', 'T11'],
+    types: ['metro', 'tram'],
+    lat: 48.9458,
+    lng: 2.3644,
+    district: 'Saint-Denis (93)',
+  },
+  {
+    id: 'station-basilique-saint-denis',
+    name: 'Basilique de Saint-Denis',
+    lines: ['M13', 'T1', 'T8'],
+    types: ['metro', 'tram'],
+    lat: 48.9372,
+    lng: 2.3592,
+    district: 'Saint-Denis (93)',
+  },
+  {
+    id: 'station-porte-de-vanves',
+    name: 'Porte de Vanves',
+    lines: ['M13', 'T3a', 'Bus 95'],
+    types: ['metro', 'tram', 'bus'],
+    lat: 48.8282,
+    lng: 2.3058,
+    district: 'Paris 14e',
+  },
+  {
+    id: 'station-chatillon-montrouge',
+    name: 'Châtillon - Montrouge',
+    lines: ['M13', 'T6'],
+    types: ['metro', 'tram'],
+    lat: 48.8108,
+    lng: 2.3005,
+    district: 'Châtillon (92)',
+  },
+  {
+    id: 'station-juvisy',
+    name: 'Juvisy (Grand Hub RER)',
+    lines: ['RER C', 'RER D'],
+    types: ['rer'],
+    lat: 48.6898,
+    lng: 2.3785,
+    district: 'Essonne (91)',
+  },
+  {
+    id: 'station-massy-palaiseau',
+    name: 'Massy - Palaiseau',
+    lines: ['RER B', 'RER C'],
+    types: ['rer'],
+    lat: 48.7252,
+    lng: 2.2605,
+    district: 'Essonne (91)',
+  },
+  {
+    id: 'station-cergy-prefecture',
+    name: 'Cergy Préfecture',
+    lines: ['RER A', 'Train L'],
+    types: ['rer', 'train'],
+    lat: 49.0366,
+    lng: 2.0792,
+    district: 'Val-d\'Oise (95)',
+  },
+  {
+    id: 'station-poissy',
+    name: 'Poissy',
+    lines: ['RER A', 'Train J'],
+    types: ['rer', 'train'],
+    lat: 48.9328,
+    lng: 2.0422,
+    district: 'Yvelines (78)',
+  },
+  {
+    id: 'station-melun',
+    name: 'Melun',
+    lines: ['RER D', 'Train R'],
+    types: ['rer', 'train'],
+    lat: 48.5278,
+    lng: 2.6558,
+    district: 'Seine-et-Marne (77)',
+  },
+  {
+    id: 'station-chelles-gournay',
+    name: 'Chelles - Gournay',
+    lines: ['RER E', 'Train P'],
+    types: ['rer', 'train'],
+    lat: 48.8752,
+    lng: 2.5835,
+    district: 'Seine-et-Marne (77)',
+  },
+  {
+    id: 'station-epinay-sur-seine',
+    name: 'Épinay-sur-Seine',
+    lines: ['RER C', 'T8', 'T11'],
+    types: ['rer', 'tram'],
+    lat: 48.9515,
+    lng: 2.3088,
+    district: 'Seine-Saint-Denis (93)',
+  },
+  {
+    id: 'station-aulnay-sous-bois',
+    name: 'Aulnay-sous-Bois',
+    lines: ['RER B', 'Train K'],
+    types: ['rer', 'train'],
+    lat: 48.9325,
+    lng: 2.4948,
+    district: 'Seine-Saint-Denis (93)',
+  },
+  {
+    id: 'station-villejuif-aragon',
+    name: 'Villejuif - Louis Aragon',
+    lines: ['M7', 'T7'],
+    types: ['metro', 'tram'],
+    lat: 48.7872,
+    lng: 2.3678,
+    district: 'Val-de-Marne (94)',
+  },
+  {
+    id: 'station-creteil-prefecture',
+    name: 'Créteil - Préfecture',
+    lines: ['M8'],
+    types: ['metro'],
+    lat: 48.7798,
+    lng: 2.4592,
+    district: 'Val-de-Marne (94)',
+  },
 ];
 
 export const METRO_NETWORK_STATIONS = TRANSIT_STATIONS;
@@ -383,10 +554,23 @@ const DIRECT_LINKS: DirectLink[] = [
   { stationA: 'station-concorde', stationB: 'station-montparnasse', line: 'M12', directionAtoB: 'Mairie d\'Issy', directionBtoA: 'Mairie d\'Aubervilliers', durationMin: 8, stops: 5 },
   { stationA: 'station-montparnasse', stationB: 'station-porte-de-versailles', line: 'M12', directionAtoB: 'Mairie d\'Issy', directionBtoA: 'Mairie d\'Aubervilliers', durationMin: 6, stops: 4 },
 
-  // Ligne 13
-  { stationA: 'station-porte-de-clichy', stationB: 'station-saint-lazare', line: 'M13', directionAtoB: 'Châtillon', directionBtoA: 'Asnières/St-Denis', durationMin: 6, stops: 3 },
-  { stationA: 'station-saint-lazare', stationB: 'station-invalides', line: 'M13', directionAtoB: 'Châtillon', directionBtoA: 'Asnières/St-Denis', durationMin: 4, stops: 2 },
-  { stationA: 'station-invalides', stationB: 'station-montparnasse', line: 'M13', directionAtoB: 'Châtillon', directionBtoA: 'Asnières/St-Denis', durationMin: 5, stops: 3 },
+  // Ligne 13 (Axe Nord Asnières/St-Denis ➔ Centre ➔ Sud Châtillon)
+  { stationA: 'station-les-courtilles', stationB: 'station-gabriel-peri', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Les Courtilles', durationMin: 3, stops: 2 },
+  { stationA: 'station-gabriel-peri', stationB: 'station-porte-de-clichy', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Les Courtilles', durationMin: 4, stops: 2 },
+  { stationA: 'station-saint-denis-universite', stationB: 'station-basilique-saint-denis', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Saint-Denis Université', durationMin: 3, stops: 1 },
+  { stationA: 'station-basilique-saint-denis', stationB: 'station-mairie-de-saint-ouen', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Saint-Denis Université', durationMin: 6, stops: 3 },
+  { stationA: 'station-mairie-de-saint-ouen', stationB: 'station-porte-de-clichy', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Saint-Denis Université', durationMin: 4, stops: 2 },
+  { stationA: 'station-porte-de-clichy', stationB: 'station-place-de-clichy', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Asnières / Saint-Denis', durationMin: 3, stops: 1 },
+  { stationA: 'station-place-de-clichy', stationB: 'station-saint-lazare', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Asnières / Saint-Denis', durationMin: 3, stops: 1 },
+  { stationA: 'station-saint-lazare', stationB: 'station-invalides', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Asnières / Saint-Denis', durationMin: 4, stops: 2 },
+  { stationA: 'station-invalides', stationB: 'station-montparnasse', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Asnières / Saint-Denis', durationMin: 5, stops: 3 },
+  { stationA: 'station-montparnasse', stationB: 'station-porte-de-vanves', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Asnières / Saint-Denis', durationMin: 4, stops: 2 },
+  { stationA: 'station-porte-de-vanves', stationB: 'station-chatillon-montrouge', line: 'M13', directionAtoB: 'Châtillon - Montrouge', directionBtoA: 'Asnières / Saint-Denis', durationMin: 4, stops: 2 },
+
+  // Lignes Bus du secteur Clichy / Saint-Ouen
+  { stationA: 'station-porte-de-clichy', stationB: 'station-saint-lazare', line: 'Bus 66', directionAtoB: 'Opéra', directionBtoA: 'Saint-Ouen', durationMin: 12, stops: 6 },
+  { stationA: 'station-porte-de-clichy', stationB: 'station-chatelet', line: 'Bus 74', directionAtoB: 'Châtelet', directionBtoA: 'Clichy', durationMin: 18, stops: 9 },
+  { stationA: 'station-porte-de-clichy', stationB: 'station-gare-du-nord', line: 'Bus 54', directionAtoB: 'Porte d\'Aubervilliers', directionBtoA: 'Asnières', durationMin: 16, stops: 8 },
 
   // RER A
   { stationA: 'station-la-defense', stationB: 'station-etoile', line: 'RER A', directionAtoB: 'Marne-la-Vallée / Boissy', directionBtoA: 'Cergy / Poissy', durationMin: 4, stops: 1 },
@@ -712,4 +896,47 @@ export function calculateMetroRoute(
     fullPolyline,
     recommendation,
   };
+}
+
+// === GESTION DES FAVORIS ET ÉPINGLAGE QUOTIDIEN (M13, Tram, Bus, etc.) ===
+export interface PinnedCommute {
+  homeStationId: string;
+  workStationId: string;
+  name: string;
+}
+
+export interface PinnedTransportsConfig {
+  pinnedHubId: string;
+  pinnedLines: string[];
+  dailyCommute?: PinnedCommute;
+}
+
+const PINNED_CONFIG_STORAGE_KEY = 'maparis_pinned_transports_v1';
+
+export function getPinnedTransportsConfig(): PinnedTransportsConfig {
+  try {
+    const saved = localStorage.getItem(PINNED_CONFIG_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    // fallback
+  }
+  return {
+    pinnedHubId: 'station-porte-de-clichy',
+    pinnedLines: ['M13', 'T3b', 'Bus 54', 'Bus 66'],
+    dailyCommute: {
+      homeStationId: 'station-porte-de-clichy',
+      workStationId: 'station-saint-lazare',
+      name: 'Mon Trajet Quotidien (Porte de Clichy ➔ Saint-Lazare)'
+    }
+  };
+}
+
+export function savePinnedTransportsConfig(cfg: PinnedTransportsConfig): void {
+  try {
+    localStorage.setItem(PINNED_CONFIG_STORAGE_KEY, JSON.stringify(cfg));
+  } catch (e) {
+    // ignore
+  }
 }
