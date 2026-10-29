@@ -28,6 +28,16 @@ export interface Incident {
   updated_at?: string;
 }
 
+export interface RealtimeDeparture {
+  line: string;
+  destination: string;
+  remainingMinutes: number;
+  remainingDisplay: string; // e.g. "À l'approche", "1 min", "3 min"
+  followingDisplay?: string; // e.g. "5 min"
+  isRealtime: boolean;
+  status: 'on_time' | 'delayed' | 'disrupted';
+}
+
 export interface MetroStationStatus {
   id: string;
   name: string;
@@ -36,6 +46,7 @@ export interface MetroStationStatus {
   incident_desc?: string;
   lat: number;
   lng: number;
+  departures?: RealtimeDeparture[];
 }
 
 export interface FilterOptions {

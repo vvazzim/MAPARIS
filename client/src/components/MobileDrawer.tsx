@@ -66,8 +66,11 @@ export const MobileDrawer: React.FC = () => {
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10">
         <div className="w-screen max-w-sm sm:max-w-md bg-dark-900 border-l border-dark-800 shadow-2xl flex flex-col justify-between overflow-y-auto">
           
-          {/* Header du Menu Unique */}
-          <div className="p-4 sm:p-5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0">
+          {/* Header du Menu Unique avec Safe Area pour éviter l'encoche / barre de statut */}
+          <div 
+            style={{ paddingTop: 'max(1.25rem, calc(0.75rem + env(safe-area-inset-top, 0px)))' }}
+            className="p-4 sm:p-5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0"
+          >
             <div className="flex items-center space-x-2.5 sm:space-x-3">
               <ParisLogo className="w-8 h-8" showAlertDot={dangerCount > 0 || warningCount > 0} />
               <div>
@@ -370,8 +373,11 @@ export const MobileDrawer: React.FC = () => {
 
           </div>
 
-          {/* Footer : Statut Wi-Fi / Connexion (qui disparaît dès la rétraction du menu) */}
-          <div className="p-4 border-t border-dark-800 bg-dark-950/80 space-y-2 shrink-0">
+          {/* Footer : Statut Wi-Fi / Connexion (avec Safe Area bas) */}
+          <div 
+            style={{ paddingBottom: 'max(1rem, calc(0.5rem + env(safe-area-inset-bottom, 0px)))' }}
+            className="p-4 border-t border-dark-800 bg-dark-950/80 space-y-2 shrink-0"
+          >
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-slate-400 flex items-center gap-1.5 select-none">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />

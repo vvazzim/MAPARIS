@@ -11,6 +11,7 @@ import {
   MapPin,
   X 
 } from 'lucide-react';
+import { getRealtimeDeparturesForStation, getLineStyle } from '../../services/ratpRealtimeService';
 
 // Custom Map Controller to smoothly pan/zoom and resize
 const MapController: React.FC = () => {
@@ -324,49 +325,91 @@ export const SecurityMap: React.FC = () => {
 
         {/* Transport Station Markers */}
         {showTransports &&
-          PARIS_TRANSPORT_HUBS.map((station) => (
-            <Marker
-              key={station.id}
-              position={[station.lat, station.lng]}
-              icon={createStationIcon(station.status)}
-            >
-              <Popup>
-                <div className="p-1 min-w-[230px] text-slate-100">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-dark-700/80 mb-2">
-                    <span className="flex items-center gap-1.5 font-bold text-xs text-white">
-                      <Train className="w-3.5 h-3.5 text-indigo-400" />
-                      {station.name}
-                    </span>
-                    <span
-                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase font-semibold ${
-                        station.status === 'closed'
-                          ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                          : station.status === 'disrupted'
-                          ? 'bg-amber-950 text-amber-400 border border-amber-800'
-                          : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      }`}
-                    >
-                      {station.status === 'closed' ? t.transport.closed : station.status === 'disrupted' ? t.transport.disrupted : t.transport.normal}
-                    </span>
-                  </div>
+          PARIS_TRANSPORT_HUBS.map((station) => {
+            const departures = getRealtimeDeparturesForStation(station.id, station.lines, station.status).slice(0, 4);
 
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {station.lines.map((line) => (
-                      <span key={line} className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-dark-800 text-slate-200 border border-dark-700">
-                        {line}
+            return (
+              <Marker
+                key={station.id}
+                position={[station.lat, station.lng]}
+                icon={createStationIcon(station.status)}
+              >
+                <Popup>
+                  <div className="p-1 min-w-[250px] max-w-[290px] text-slate-100">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-dark-700/80 mb-2">
+                      <span className="flex items-center gap-1.5 font-bold text-xs text-white">
+                        <Train className="w-3.5 h-3.5 text-indigo-400" />
+                        {station.name}
                       </span>
-                    ))}
-                  </div>
+                      <span
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded uppercase font-semibold ${
+                          station.status === 'closed'
+                            ? 'bg-rose-950 text-rose-400 border border-rose-800'
+                            : station.status === 'disrupted'
+                            ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                            : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                        }`}
+                      >
+                        {station.status === 'closed' ? t.transport.closed : station.status === 'disrupted' ? t.transport.disrupted : t.transport.fluid}
+                      </span>
+                    </div>
 
-                  {station.incident_desc && (
-                    <p className="text-xs text-slate-300 leading-snug">
-                      {station.incident_desc}
-                    </p>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                    {/* Prochains Départs en Temps Réel */}
+                    <div className="mb-2">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+                        <span>Prochains Métros</span>
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Temps Réel
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        {departures.map((dep, idx) => {
+                          const style = getLineStyle(dep.line);
+                          const isApproaching = dep.remainingMinutes === 0;
+
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between p-1 rounded bg-dark-900 border border-dark-750 text-xs"
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                                <span
+                                  style={{ backgroundColor: style.bg, color: style.text }}
+                                  className="w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] font-mono shrink-0"
+                                >
+                                  {style.label}
+                                </span>
+                                <span className="truncate text-slate-200 text-[10px]">
+                                  {dep.destination}
+                                </span>
+                              </div>
+                              <span
+                                className={`font-mono font-bold text-[10px] px-1.5 py-0.2 rounded shrink-0 ${
+                                  isApproaching
+                                    ? 'bg-emerald-500/20 text-emerald-300 animate-pulse'
+                                    : 'text-emerald-400'
+                                }`}
+                              >
+                                {dep.remainingDisplay}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {station.incident_desc && (
+                      <p className="text-[11px] text-slate-300 leading-snug bg-dark-900/60 p-1.5 rounded border border-dark-800">
+                        {station.incident_desc}
+                      </p>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
         {/* Active Safe Route Layer */}
         {activeSafeRoute && (
           <>
