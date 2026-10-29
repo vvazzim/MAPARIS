@@ -358,7 +358,7 @@ export class IncidentRepository {
       const isMediaManif = (nearby.source && nearby.source.includes('MediaManif')) || (data.source && data.source.includes('MediaManif'));
       const maxLifespanMs = isMediaManif ? 30 * 60 * 1000 : 60 * 60 * 1000;
       const maxGlobalExpiry = new Date(createdAt.getTime() + maxLifespanMs);
-      const extendedExpiry = new Date(currentExpiry.getTime() + (isMediaManif ? 10 * 60 * 1000 : 15 * 60 * 1000));
+      const extendedExpiry = new Date(currentExpiry.getTime() + (isMediaManif ? 10 * 60 * 1000 : 30 * 60 * 1000));
       nearby.expires_at = (extendedExpiry > maxGlobalExpiry ? maxGlobalExpiry : extendedExpiry).toISOString();
 
       // Mise à jour de la description avec le signalement le plus récent (strictement limité à 160 caractères)
@@ -724,6 +724,9 @@ export class IncidentRepository {
     this.cleanupInterval = setInterval(() => {
       this.cleanupExpired().catch(() => {});
     }, intervalMs);
+    if (this.cleanupInterval && typeof this.cleanupInterval.unref === 'function') {
+      this.cleanupInterval.unref();
+    }
   }
 
   private computeReliability(inc: Incident): number {

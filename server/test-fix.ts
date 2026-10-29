@@ -54,6 +54,7 @@ async function testFixes() {
 
   await app.close();
   console.log('🎉 Tous les tests de validation sont validés avec succès !');
+  process.exit(0);
 }
 
 testFixes().catch((err) => {

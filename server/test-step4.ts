@@ -54,6 +54,7 @@ async function testStep4() {
 
   await app.close();
   console.log('\n🎯 Tous les tests de l\'Étape 4 sont validés avec succès !');
+  process.exit(0);
 }
 
 testStep4().catch((err) => {

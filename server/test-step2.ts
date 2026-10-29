@@ -100,6 +100,7 @@ async function runStep2Tests() {
   console.log(`\n========================================`);
   console.log(`🎯 RÉSULTATS : ${testsPassed} / ${testsTotal} tests validés avec succès !`);
   console.log(`========================================\n`);
+  process.exit(0);
 }
 
 runStep2Tests().catch((err) => {

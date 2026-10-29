@@ -34,7 +34,7 @@ export function setupSocketIO(io: Server) {
   });
 
   // Tâche de fond périodique : Nettoyage TTL et notification WebSocket temps réel
-  setInterval(async () => {
+  const cleanupTimer = setInterval(async () => {
     try {
       const expiredIds = await incidentRepository.cleanupExpired();
       if (expiredIds.length > 0 && ioInstance) {
@@ -46,6 +46,9 @@ export function setupSocketIO(io: Server) {
       console.error('[Socket.IO] Erreur broadcast cleanup:', err.message);
     }
   }, 30000);
+  if (cleanupTimer && typeof cleanupTimer.unref === 'function') {
+    cleanupTimer.unref();
+  }
 }
 
 /**

@@ -53,6 +53,7 @@ async function testStep6() {
 
   await app.close();
   console.log('\n🎯 Tous les tests de l\'Étape 6 sont validés avec succès !');
+  process.exit(0);
 }
 
 testStep6().catch((err) => {
