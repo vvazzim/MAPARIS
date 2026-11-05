@@ -9,7 +9,10 @@ import { formatIncidentDetails } from '../../utils/incidentFormatter';
 import { 
   Train, 
   MapPin,
-  X 
+  X,
+  Crosshair,
+  LocateFixed,
+  ShieldAlert
 } from 'lucide-react';
 import { getRealtimeDeparturesForStation, getLineStyle } from '../../services/ratpRealtimeService';
 
@@ -167,7 +170,10 @@ export const SecurityMap: React.FC = () => {
     incidents,
     setSelectedIncident,
     showDangerRadius,
+    toggleDangerRadius,
     showTransports,
+    toggleTransports,
+    flyTo,
     activeSafeRoute,
     clearSafeRoute,
     activeMetroRoute,
@@ -177,11 +183,27 @@ export const SecurityMap: React.FC = () => {
     setSelectedRouteIndex,
     isSafeRouteModalOpen,
     isReportModalOpen,
+    isMetroRouteModalOpen,
     language,
     t,
   } = useIncidentStore();
 
-  const isAnyModalOpen = isSafeRouteModalOpen || isReportModalOpen;
+  const isAnyModalOpen = isSafeRouteModalOpen || isReportModalOpen || isMetroRouteModalOpen;
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        flyTo(pos.coords.latitude, pos.coords.longitude, 15);
+      },
+      (err) => console.warn('Geolocation warning:', err),
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
+
+  const handleRecenterParis = () => {
+    flyTo(48.8566, 2.3522, 13);
+  };
 
   // Calcul Haversine de la distance d'un tracé coordonnées
   const getPathDistanceKm = (path: [number, number][]): number => {
@@ -684,6 +706,66 @@ export const SecurityMap: React.FC = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Floating Quick Map Controls (Desktop & Mobile) */}
+      {!isAnyModalOpen && (
+        <aside 
+          aria-label="Outils de contrôle carte"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[400] flex flex-col gap-2 pointer-events-auto select-none"
+        >
+          {/* Recentrer Paris */}
+          <button
+            type="button"
+            onClick={handleRecenterParis}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-dark-900/90 hover:bg-dark-850 active:bg-dark-800 backdrop-blur-xl border border-dark-750 text-slate-300 hover:text-white flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer"
+            title="Recentrer sur Paris"
+            aria-label="Recentrer sur Paris"
+          >
+            <Crosshair className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+          </button>
+
+          {/* Ma Position */}
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-dark-900/90 hover:bg-dark-850 active:bg-dark-800 backdrop-blur-xl border border-dark-750 text-slate-300 hover:text-white flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer"
+            title="Ma position GPS"
+            aria-label="Ma position GPS"
+          >
+            <LocateFixed className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+          </button>
+
+          {/* Basculer Périmètres de Danger */}
+          <button
+            type="button"
+            onClick={toggleDangerRadius}
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl backdrop-blur-xl border flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer ${
+              showDangerRadius
+                ? 'bg-rose-950/90 border-rose-500/60 text-rose-400 shadow-rose-950/50'
+                : 'bg-dark-900/90 hover:bg-dark-850 border-dark-750 text-slate-400'
+            }`}
+            title={showDangerRadius ? 'Masquer les zones de danger' : 'Afficher les zones de danger'}
+            aria-label="Zones de danger"
+          >
+            <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Basculer Stations RATP / Transports */}
+          <button
+            type="button"
+            onClick={toggleTransports}
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl backdrop-blur-xl border flex items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer ${
+              showTransports
+                ? 'bg-indigo-950/90 border-indigo-500/60 text-indigo-400 shadow-indigo-950/50'
+                : 'bg-dark-900/90 hover:bg-dark-850 border-dark-750 text-slate-400'
+            }`}
+            title={showTransports ? 'Masquer les stations de métro' : 'Afficher les stations de métro'}
+            aria-label="Stations de transport"
+          >
+            <Train className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        </aside>
       )}
     </div>
   );

@@ -7,7 +7,6 @@ import {
   X
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
-import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { ParisLogo } from './ParisLogo';
 
 export const Header: React.FC = () => {
@@ -29,7 +28,6 @@ export const Header: React.FC = () => {
   const dangerCount = incidents.filter((i) => i.severity === 'danger').length;
   const warningCount = incidents.filter((i) => i.severity === 'warning').length;
   const safeCount = incidents.filter((i) => i.severity === 'safe').length;
-  const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
 
   return (
     <header 
@@ -41,7 +39,7 @@ export const Header: React.FC = () => {
     >
       {/* Logo officiel Ville de Paris avec marque MAParis */}
       <div className="flex items-center space-x-2.5 sm:space-x-3">
-        <ParisLogo className="w-8 h-8 sm:w-9 sm:h-9" showAlertDot={dangerCount > 0 || warningCount > 0} />
+        <ParisLogo className="w-8 h-8 sm:w-9 sm:h-9 shrink-0" showAlertDot={dangerCount > 0 || warningCount > 0} />
         <div>
           <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
             <span>MAParis</span>
@@ -58,7 +56,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Info Status Badges (Passifs sur Desktop) */}
-      <div className="hidden xl:flex items-center space-x-2.5 text-xs font-mono cursor-default select-none">
+      <div className="hidden xl:flex items-center space-x-2.5 text-xs font-mono cursor-default select-none tabular-nums">
         <div 
           className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-red-950/30 border border-red-900/40 text-red-400"
           title="Nombre d'alertes rouges actives"
@@ -84,23 +82,22 @@ export const Header: React.FC = () => {
 
       {/* Actions & Menu Principal Unique */}
       <div className="flex items-center space-x-1.5 sm:space-x-2.5">
-        {/* Trajet Métro & RER (Visible Mobile & Desktop avec Heure de départ & Compte à rebours) */}
+        {/* Trajet Métro & RER (Desktop & Tablet) */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
             if (showTransportWidget) toggleTransportWidget();
             openMetroRouteModal();
           }}
-          className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-950/60 border border-indigo-400/40 transition active:scale-95 cursor-pointer"
-          title="Calculer un trajet Métro & RER avec heure exacte et compte à rebours"
+          className="hidden sm:flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-950/60 border border-indigo-400/40 transition active:scale-95 cursor-pointer"
+          title="Calculer un trajet Métro, RER, Tram, Bus avec décompte à la seconde"
         >
           <Train className="w-3.5 h-3.5 text-white" />
-          <span className="hidden sm:inline">Trajets & Horaires</span>
-          <span className="sm:hidden text-[11px] font-bold">Transports</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse hidden xs:inline-block" />
+          <span>Trajets & Horaires</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </button>
 
-        {/* Itinéraire Sûr Piéton CTA */}
+        {/* Itinéraire Sûr Piéton CTA (Desktop & Tablet) */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
@@ -114,37 +111,18 @@ export const Header: React.FC = () => {
           <span>{t.header.safeRoute}</span>
         </button>
 
-        {/* Bouton Signaler Rapide (Accessible Mobile & Desktop) */}
+        {/* Bouton Signaler Rapide (Desktop & Tablet) */}
         <button
           onClick={() => {
             setMobileActiveTab('map');
             if (showTransportWidget) toggleTransportWidget();
             openReportModal();
           }}
-          className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950/80 border border-rose-400/30 transition active:scale-95 cursor-pointer"
+          className="hidden sm:flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950/80 border border-rose-400/30 transition active:scale-95 cursor-pointer"
           title="Diffuser une alerte citoyenne"
         >
           <PlusCircle className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{t.header.report}</span>
-        </button>
-
-        {/* Hubs RATP */}
-        <button
-          onClick={toggleTransportWidget}
-          className={`hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer active:scale-95 ${
-            showTransportWidget
-              ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-950/50'
-              : 'bg-indigo-950/40 border-indigo-500/30 text-indigo-300 hover:bg-indigo-900/40'
-          }`}
-          title="Afficher les correspondances et métros RATP"
-        >
-          <Train className="w-3.5 h-3.5 text-indigo-400" />
-          <span>{t.header.ratpHubs}</span>
-          {disruptedStations > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-600 text-white font-bold">
-              {disruptedStations}
-            </span>
-          )}
+          <span>{t.header.report}</span>
         </button>
 
         {/* Choix Langue FR / EN */}

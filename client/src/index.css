@@ -6,6 +6,12 @@
   color-scheme: dark;
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 html, body, #root {
   height: 100%;
   height: 100vh;
@@ -20,8 +26,8 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #090d16;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #070a12;
   color: #f1f5f9;
   position: fixed;
   top: 0;
@@ -33,113 +39,156 @@ body {
   height: 100dvh;
   overscroll-behavior-y: none;
   -webkit-overscroll-behavior-y: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Tabular numbers for clocks, countdowns, meters and stats */
+.tabular-nums, .font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headings text balance */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
 }
 
 /* Custom Scrollbar for dark theme */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #111827;
+  background: rgba(11, 15, 25, 0.6);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #374151;
-  border-radius: 3px;
+  background: #273549;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #3b4e6b;
 }
 
-/* Leaflet Container Overrides */
+/* Hide scrollbar utility for clean app look */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Leaflet Container Overrides & Dark Theming */
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
   min-height: 100% !important;
-  background-color: #f1f5f9 !important;
+  background-color: #070a12 !important;
   font-family: inherit !important;
   outline: none;
   z-index: 10;
 }
 
 .leaflet-popup-content-wrapper {
-  background: #182234 !important;
+  background: rgba(15, 23, 42, 0.95) !important;
   color: #f8fafc !important;
-  border-radius: 0.75rem !important;
-  border: 1px solid #334155 !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
-  max-width: 290px !important;
-  max-height: 260px !important;
+  border-radius: 1rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(99, 102, 241, 0.15) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  max-width: 310px !important;
+  max-height: 300px !important;
   overflow: hidden !important;
+  padding: 0 !important;
 }
 
 .leaflet-popup-content {
-  margin: 8px 10px !important;
-  line-height: 1.35 !important;
-  max-height: 240px !important;
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+  max-height: 270px !important;
   overflow-y: auto !important;
 }
 
-.leaflet-popup-tip {
-  background: #182234 !important;
+.leaflet-popup-tip-container {
+  overflow: hidden;
 }
 
-/* Dark theme zoom controls */
+.leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+/* Leaflet Zoom Control Styling */
 .leaflet-control-zoom {
-  border: 1px solid #1f2937 !important;
-  border-radius: 0.75rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.875rem !important;
   overflow: hidden;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
 }
 
 .leaflet-control-zoom a {
-  background-color: #111827 !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid #1f2937 !important;
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  color: #cbd5e1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.15s ease !important;
 }
 
 .leaflet-control-zoom a:hover {
-  background-color: #1f2937 !important;
+  background-color: #1e293b !important;
   color: #ffffff !important;
 }
 
-/* Custom Markers with transparent wrapper */
-.custom-leaflet-marker,
-.custom-station-marker {
-  background: transparent !important;
-  border: none !important;
+.leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
 }
 
-/* Pulse animation for high severity alerts */
-@keyframes radar-ping {
+/* Attributions Styling */
+.leaflet-control-attribution {
+  background: rgba(7, 10, 18, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  color: #64748b !important;
+  font-size: 9px !important;
+  border-top-left-radius: 0.5rem !important;
+  padding: 2px 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.leaflet-control-attribution a {
+  color: #94a3b8 !important;
+}
+
+/* Pulse Glow Keyframes */
+@keyframes pulse-ring {
   0% {
     transform: scale(0.95);
     opacity: 0.8;
   }
-  70% {
-    transform: scale(1.8);
+  50% {
+    transform: scale(1.4);
     opacity: 0;
   }
   100% {
-    transform: scale(1.8);
+    transform: scale(1.4);
     opacity: 0;
   }
 }
 
-.animate-radar {
-  animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
 }
 
-/* Mobile Safe Area & Dynamic Viewport Height (dvh) */
-@supports (height: 100dvh) {
-  .max-h-dvh {
-    max-height: 100dvh;
-  }
+/* Concentric border helper */
+.concentric-outer {
+  border-radius: 1.25rem;
+  padding: 0.5rem;
 }
-
-.modal-safe-bottom {
-  padding-bottom: max(2rem, calc(1.5rem + env(safe-area-inset-bottom, 24px)));
+.concentric-inner {
+  border-radius: 0.875rem;
 }
