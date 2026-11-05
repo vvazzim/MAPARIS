@@ -857,7 +857,21 @@ export class TransitService {
   /**
    * Retourne l'état des perturbations réseau, retards et grèves
    */
-  getNetworkDisruptions() {
+  getNetworkDisruptions(): {
+    id: string;
+    lineKey: string;
+    lineLabel: string;
+    type: 'delay' | 'cancellation' | 'strike' | 'station_closure';
+    severity: 'critical' | 'warning' | 'info';
+    title: string;
+    description: string;
+    impactedSection?: string;
+    estimatedResolution?: string;
+    updatedAt: string;
+    stationName: string;
+    lat: number;
+    lng: number;
+  }[] {
     return [
       {
         id: 'disrup-1',
@@ -870,6 +884,9 @@ export class TransitService {
         impactedSection: 'Tronçon Nord vers Châtillon - Montrouge',
         estimatedResolution: 'Intervention des techniciens RATP en cours',
         updatedAt: 'Il y a 4 min',
+        stationName: 'Porte de Clichy',
+        lat: 48.8944,
+        lng: 2.3134,
       },
       {
         id: 'disrup-2',
@@ -882,6 +899,9 @@ export class TransitService {
         impactedSection: 'Gare du Nord ↔ Châtelet - Les Halles',
         estimatedResolution: 'Reprise estimée dans 45 minutes',
         updatedAt: 'Il y a 6 min',
+        stationName: 'Gare du Nord',
+        lat: 48.8809,
+        lng: 2.3553,
       },
       {
         id: 'disrup-3',
@@ -894,6 +914,9 @@ export class TransitService {
         impactedSection: 'Paris Gare du Nord ↔ Persan-Beaumont',
         estimatedResolution: 'Retour progressif à 14h00',
         updatedAt: 'Il y a 12 min',
+        stationName: 'Gare du Nord',
+        lat: 48.8809,
+        lng: 2.3553,
       },
       {
         id: 'disrup-4',
@@ -906,6 +929,24 @@ export class TransitService {
         impactedSection: 'Ensemble de la ligne C',
         estimatedResolution: 'Valable toute la journée',
         updatedAt: 'Il y a 25 min',
+        stationName: 'Invalides',
+        lat: 48.8617,
+        lng: 2.3142,
+      },
+      {
+        id: 'disrup-5',
+        lineKey: 'M14',
+        lineLabel: 'Métro 14',
+        type: 'station_closure',
+        severity: 'info',
+        title: 'Ascenseurs PMR en maintenance à Porte de Clichy',
+        description: 'Les ascenseurs reliant le quai de la ligne 14 au niveau billetterie sont temporairement indisponibles. Emprunter les escalators mécaniques.',
+        impactedSection: 'Station Porte de Clichy (Accès Boulevard Bessières)',
+        estimatedResolution: 'Fin d\'intervention prévue ce soir à 18h',
+        updatedAt: 'Il y a 22 min',
+        stationName: 'Porte de Clichy',
+        lat: 48.8944,
+        lng: 2.3134,
       },
     ];
   }

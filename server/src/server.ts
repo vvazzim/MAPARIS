@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { setupSocketIO } from './sockets/socketHandler.js';
 import { telegramScraperService } from './services/telegramScraperService.js';
 import { mediaManifService } from './services/mediaManifService.js';
+import { transitAutomationService } from './services/transitAutomationService.js';
 
 async function bootstrap() {
   try {
@@ -28,6 +29,9 @@ async function bootstrap() {
 
     // Active la synchronisation automatisée MediaManif (par défaut toutes les 60 min / 1h, configurable)
     mediaManifService.startPolling(env.MEDIAMANIF_POLL_INTERVAL_MIN);
+
+    // Active la synchronisation automatique des Grèves, Retards & Perturbations Réseau (toutes les 5 min)
+    transitAutomationService.startPolling(5);
 
     console.log(`
 =====================================================

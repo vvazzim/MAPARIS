@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { transitService, normalizeLineKey, getLineStyle, RATP_LINES_METADATA } from '../services/transitService.js';
+import { transitAutomationService } from '../services/transitAutomationService.js';
 
 export const transitRoutes: FastifyPluginAsync = async (fastify) => {
   /**
@@ -86,6 +87,15 @@ export const transitRoutes: FastifyPluginAsync = async (fastify) => {
       count: disruptions.length,
       disruptions,
     };
+  });
+
+  /**
+   * POST /api/transit/sync-disruptions
+   * Déclenche la synchronisation manuelle des grèves et retards vers la carte
+   */
+  fastify.post('/api/transit/sync-disruptions', async () => {
+    const result = await transitAutomationService.syncDisruptionsToIncidents();
+    return result;
   });
 
   /**

@@ -182,6 +182,19 @@ export const MetroRouteModal: React.FC = () => {
     };
   };
 
+  const getDisruptionCoordinates = (disrup: TransitDisruptionItem): { lat: number; lng: number } => {
+    if (disrup.lineKey === 'M13' || disrup.lineKey === 'M14' || disrup.lineKey === 'T3b') {
+      return { lat: 48.8944, lng: 2.3134 }; // Porte de Clichy
+    }
+    if (disrup.lineKey === 'RER B' || disrup.lineKey === 'Train H') {
+      return { lat: 48.8809, lng: 2.3553 }; // Paris Gare du Nord
+    }
+    if (disrup.lineKey === 'RER C') {
+      return { lat: 48.8617, lng: 2.3142 }; // Invalides / Saint-Lazare
+    }
+    return { lat: 48.8756, lng: 2.3258 }; // Saint-Lazare
+  };
+
   const handleComputeRoute = () => {
     const origin = TRANSIT_STATIONS.find(s => s.name.toLowerCase().includes(originSearch.toLowerCase().trim())) || originStation;
     const dest = TRANSIT_STATIONS.find(s => s.name.toLowerCase().includes(destSearch.toLowerCase().trim())) || destStation;
@@ -890,6 +903,40 @@ export const MetroRouteModal: React.FC = () => {
                         {disrup.estimatedResolution && (
                           <span className="text-slate-400">{disrup.estimatedResolution}</span>
                         )}
+                      </div>
+
+                      {/* Actions Rapides 1-Tap : Voir sur Carte & Confirmer/Signaler */}
+                      <div className="flex items-center justify-between pt-2 border-t border-dark-800 text-[11px] font-mono">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const coords = getDisruptionCoordinates(disrup);
+                            flyTo(coords.lat, coords.lng, 15);
+                            closeMetroRouteModal();
+                          }}
+                          className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer py-1"
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                          <span>Voir sur la carte</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const coords = getDisruptionCoordinates(disrup);
+                            openReportModal({
+                              category: disrup.type === 'station_closure' ? 'arret_perturbe' : 'greve_retard',
+                              line: disrup.lineKey,
+                              address: disrup.impactedSection || `${disrup.lineLabel} - ${disrup.title}`,
+                              lat: coords.lat,
+                              lng: coords.lng,
+                            });
+                          }}
+                          className="text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer py-1 font-semibold"
+                          title="Confirmer ou signaler une aggravation"
+                        >
+                          <span>📢 Confirmer / Signaler</span>
+                        </button>
                       </div>
                     </div>
                   );

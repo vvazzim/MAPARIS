@@ -579,6 +579,26 @@ export class IncidentRepository {
     return inc;
   }
 
+  /**
+   * Met à jour directement un incident existant
+   */
+  async update(id: string, updates: Partial<Incident>): Promise<Incident | null> {
+    const inc = this.inMemoryCache.get(id);
+    if (!inc) return null;
+    Object.assign(inc, updates);
+    inc.updated_at = new Date().toISOString();
+    await this.saveIncident(inc);
+    return inc;
+  }
+
+  /**
+   * Sauvegarde directe d'un incident complet (ex: import automatisé)
+   */
+  async saveDirect(incident: Incident): Promise<Incident> {
+    await this.saveIncident(incident);
+    return incident;
+  }
+
   async upvote(id: string): Promise<Incident | null> {
     const inc = this.inMemoryCache.get(id);
     if (!inc) return null;
