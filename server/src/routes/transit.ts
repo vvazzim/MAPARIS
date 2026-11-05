@@ -76,6 +76,19 @@ export const transitRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
+   * GET /api/transit/disruptions
+   * Récupère les retards, annulations de trains et préavis de grèves
+   */
+  fastify.get('/api/transit/disruptions', async () => {
+    const disruptions = transitService.getNetworkDisruptions();
+    return {
+      success: true,
+      count: disruptions.length,
+      disruptions,
+    };
+  });
+
+  /**
    * GET /api/transit/style/:lineKey
    * Récupère le style graphique officiel d'une ligne
    */

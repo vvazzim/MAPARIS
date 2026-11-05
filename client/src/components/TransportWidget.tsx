@@ -6,14 +6,19 @@ import {
   MapPin, 
   Clock, 
   RefreshCw, 
-  Radio 
+  Radio,
+  Star,
+  ChevronRight
 } from 'lucide-react';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { MetroStationStatus } from '../types';
 import { 
   useRealtimeDepartures, 
-  getLineStyle 
+  getLineStyle,
+  getPinnedStops,
+  getStopRealtimeDeparture,
+  getAlignedNow
 } from '../services/ratpRealtimeService';
 
 /**
@@ -198,19 +203,80 @@ export const TransportWidget: React.FC = () => {
           </div>
         </div>
 
-        {/* CTA Rapide Itinéraire Métro */}
-        <div className="p-2.5 bg-dark-950/80 border-b border-dark-800 shrink-0">
+        {/* CTA Rapide Explorateur & Radar Contrôleurs */}
+        <div className="p-2.5 bg-dark-950/80 border-b border-dark-800 shrink-0 space-y-2">
           <button
             onClick={() => {
               toggleTransportWidget();
               openMetroRouteModal();
             }}
-            className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold font-mono transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-950 active:scale-[0.98]"
+            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold font-mono transition flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-950 active:scale-[0.98]"
           >
-            <Train className="w-3.5 h-3.5" />
-            <span>Calculer un Trajet en Direct (Compte à Rebours)</span>
+            <Train className="w-4 h-4" />
+            <span>Ouvrir l'Explorateur Lignes, Arrêts & Radar</span>
           </button>
         </div>
+
+        {/* Mes Transports Épinglés (Favoris) */}
+        {getPinnedStops().length > 0 && (
+          <div className="p-3 bg-dark-950/90 border-b border-dark-800 shrink-0 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-white flex items-center gap-1.5">
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-current" />
+                <span>Mes Arrêts Épinglés</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  toggleTransportWidget();
+                  openMetroRouteModal();
+                }}
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 font-mono flex items-center gap-0.5 cursor-pointer"
+              >
+                <span>Gérer</span>
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {getPinnedStops().slice(0, 4).map((pin) => {
+                const style = getLineStyle(pin.lineKey);
+                const dep = getStopRealtimeDeparture(
+                  pin.stopId,
+                  2,
+                  10,
+                  pin.lineKey,
+                  pin.directionCode || 'DIR',
+                  getAlignedNow()
+                );
+
+                return (
+                  <div
+                    key={pin.id}
+                    className="p-1.5 rounded-lg bg-dark-900 border border-dark-800 flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        style={{ backgroundColor: style.bg, color: style.text }}
+                        className="min-w-[22px] h-5 px-1 rounded flex items-center justify-center font-bold text-[10px] font-mono shrink-0"
+                      >
+                        {style.label}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-slate-200 truncate">{pin.stopName}</div>
+                        <div className="text-[9px] text-cyan-400 truncate">➜ {pin.direction}</div>
+                      </div>
+                    </div>
+
+                    <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800/80 shrink-0">
+                      {dep.remainingDisplay}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Filter Tabs */}
         <div className="flex p-2 bg-dark-900 border-b border-dark-800/80 gap-1 text-xs shrink-0">

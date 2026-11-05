@@ -1,390 +1,222 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Train, 
-  ArrowRight, 
   ArrowUpDown, 
-  Clock, 
-  Timer, 
-  CheckCircle2, 
   Navigation,
   Compass,
-  LocateFixed,
-  Bus,
-  TramFront,
   Star,
-  Pin,
-  Sparkles,
-  Zap,
-  Edit3
+  AlertTriangle,
+  Plus
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { 
   TRANSIT_STATIONS,
   TransitStation,
   calculateMetroRoute, 
-  MetroRoutePlan,
-  searchTransitStations,
-  findNearestTransitStation,
-  getPinnedTransportsConfig,
-  savePinnedTransportsConfig,
-  PinnedTransportsConfig
+  MetroRoutePlan
 } from '../services/metroRoutingService';
 import { 
   getLineStyle, 
-  getRealtimeDeparturesForStation, 
   getAlignedNow,
   normalizeLineKey,
-  TransitLineType
+  getPinnedStops,
+  togglePinStop,
+  isStopPinned,
+  getStopRealtimeDeparture,
+  fetchNetworkDisruptions
 } from '../services/ratpRealtimeService';
-import { RealtimeDeparture } from '../types';
+import { 
+  IDF_LINES_DIRECTORY, 
+  SAMPLE_IDF_DISRUPTIONS, 
+  TransitStopItem, 
+  TransitDisruptionItem 
+} from '../data/transitLinesData';
+import { PinnedTransitStop } from '../types';
 
-type MainViewTab = 'daily' | 'planner';
-type ModeFilter = 'all' | 'metro' | 'rer' | 'train' | 'tram' | 'bus';
+type ModalTab = 'explorer' | 'pinned' | 'disruptions' | 'planner';
+type ModeFilter = 'all' | 'metro' | 'rer' | 'tram' | 'bus';
+type DisruptionFilter = 'all' | 'delay' | 'cancellation' | 'strike' | 'station_closure';
 
 export const MetroRouteModal: React.FC = () => {
   const { 
     isMetroRouteModalOpen, 
     closeMetroRouteModal, 
+    openReportModal,
     setActiveMetroRoute, 
     flyTo, 
-    setMobileActiveTab,
+    incidents,
     metroRouteOrigin,
     metroRouteDestination 
   } = useIncidentStore();
 
-  // Onglet principal : 'daily' (Mon Quotidien & Épinglés) vs 'planner' (Trajets Ponctuels)
-  const [activeTab, setActiveTab] = useState<MainViewTab>('daily');
+  // Onglet actif : 'explorer' (Explorateur de lignes & arrêts), 'pinned' (Mes Transports Épinglés), 'disruptions' (Retards & Grèves), 'planner' (Trajet A ➔ B)
+  const [activeTab, setActiveTab] = useState<ModalTab>('explorer');
 
-  // Configuration persistante des favoris
-  const [pinnedConfig, setPinnedConfig] = useState<PinnedTransportsConfig>(() => 
-    getPinnedTransportsConfig()
+  // Ligne sélectionnée pour l'explorateur (M13 par défaut, la ligne préférée)
+  const [selectedLineKey, setSelectedLineKey] = useState<string>('M13');
+  const [directionIndex, setDirectionIndex] = useState<number>(0);
+  const [modeFilter, setModeFilter] = useState<ModeFilter>('all');
+
+  // Arrêts épinglés
+  const [pinnedStopsList, setPinnedStopsList] = useState<PinnedTransitStop[]>(() => getPinnedStops());
+
+  // Perturbations et retards réseau
+  const [disruptions, setDisruptions] = useState<TransitDisruptionItem[]>(SAMPLE_IDF_DISRUPTIONS);
+  const [disruptionFilter, setDisruptionFilter] = useState<DisruptionFilter>('all');
+
+  // Trajet ponctuel A ➔ B
+  const originStation = useMemo<TransitStation>(() => 
+    TRANSIT_STATIONS.find(s => s.id === (metroRouteOrigin || 'station-porte-de-clichy')) || TRANSIT_STATIONS[0],
+    [metroRouteOrigin]
   );
-
-  // Station épinglée pour le quotidien
-  const pinnedHubStation = useMemo(() => {
-    return TRANSIT_STATIONS.find(s => s.id === pinnedConfig.pinnedHubId) || 
-           TRANSIT_STATIONS.find(s => s.id === 'station-porte-de-clichy') || 
-           TRANSIT_STATIONS[0];
-  }, [pinnedConfig.pinnedHubId]);
-
-  // Stations départ & arrivée pour le planificateur ponctuel
-  const [originStation, setOriginStation] = useState<TransitStation>(() => 
-    TRANSIT_STATIONS.find(s => s.id === (metroRouteOrigin || 'station-porte-de-clichy')) || TRANSIT_STATIONS[0]
+  const destStation = useMemo<TransitStation>(() => 
+    TRANSIT_STATIONS.find(s => s.id === (metroRouteDestination || 'station-saint-lazare')) || TRANSIT_STATIONS[1],
+    [metroRouteDestination]
   );
-  const [destStation, setDestStation] = useState<TransitStation>(() => 
-    TRANSIT_STATIONS.find(s => s.id === (metroRouteDestination || 'station-saint-lazare')) || TRANSIT_STATIONS[1]
-  );
-
-  // Moteur de recherche départ et arrivée
   const [originSearch, setOriginSearch] = useState<string>(() => originStation.name);
   const [destSearch, setDestSearch] = useState<string>(() => destStation.name);
-  const [isOriginSearchOpen, setIsOriginSearchOpen] = useState<boolean>(false);
-  const [isDestSearchOpen, setIsDestSearchOpen] = useState<boolean>(false);
-
-  // Filtre de mode de transport (Tous, Métro, Train/RER, Tram, Bus)
-  const [activeMode, setActiveMode] = useState<ModeFilter>('all');
-
-  // Itinéraire calculé et décomptes
   const [routePlan, setRoutePlan] = useState<MetroRoutePlan | null>(null);
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(120);
-  const [liveDepartures, setLiveDepartures] = useState<RealtimeDeparture[]>([]);
-  const [pinnedLiveDepartures, setPinnedLiveDepartures] = useState<RealtimeDeparture[]>([]);
-  const [isLocating, setIsLocating] = useState<boolean>(false);
-  const [isEditingHub, setIsEditingHub] = useState<boolean>(false);
 
-  const originInputRef = useRef<HTMLInputElement>(null);
-  const destInputRef = useRef<HTMLInputElement>(null);
+  // Horloge réactive pour ticker à la seconde
+  const [ticker, setTicker] = useState<number>(0);
 
-  // Synchronisation avec les props du store
   useEffect(() => {
-    if (metroRouteOrigin) {
-      const match = TRANSIT_STATIONS.find(s => s.id === metroRouteOrigin);
-      if (match) {
-        setOriginStation(match);
-        setOriginSearch(match.name);
-      }
-    }
-    if (metroRouteDestination) {
-      const match = TRANSIT_STATIONS.find(s => s.id === metroRouteDestination);
-      if (match) {
-        setDestStation(match);
-        setDestSearch(match.name);
-      }
-    }
-    if (metroRouteOrigin || metroRouteDestination) {
-      setActiveTab('planner');
-    }
-  }, [metroRouteOrigin, metroRouteDestination]);
-
-  // Sauvegarde persistante des favoris
-  const updatePinnedConfig = (newCfg: PinnedTransportsConfig) => {
-    setPinnedConfig(newCfg);
-    savePinnedTransportsConfig(newCfg);
-  };
-
-  // Basculer l'épinglage d'une ligne
-  const togglePinLine = (lineKey: string) => {
-    const norm = normalizeLineKey(lineKey);
-    const isPinned = pinnedConfig.pinnedLines.some(l => normalizeLineKey(l) === norm);
-    let updated: string[];
-    if (isPinned) {
-      updated = pinnedConfig.pinnedLines.filter(l => normalizeLineKey(l) !== norm);
-    } else {
-      updated = [...pinnedConfig.pinnedLines, norm];
-    }
-    updatePinnedConfig({
-      ...pinnedConfig,
-      pinnedLines: updated
-    });
-  };
-
-  // Définir la station épinglée courante
-  const handleSelectPinnedHub = (stationId: string) => {
-    updatePinnedConfig({
-      ...pinnedConfig,
-      pinnedHubId: stationId
-    });
-    setIsEditingHub(false);
-  };
-
-  // Définir le trajet actuel comme trajet quotidien
-  const handleSetCurrentAsDailyCommute = () => {
-    if (!originStation || !destStation) return;
-    updatePinnedConfig({
-      ...pinnedConfig,
-      dailyCommute: {
-        homeStationId: originStation.id,
-        workStationId: destStation.id,
-        name: `${originStation.name} ➔ ${destStation.name}`
-      }
-    });
-  };
-
-  // Lancer le trajet quotidien épinglé
-  const handleLaunchDailyCommute = () => {
-    if (!pinnedConfig.dailyCommute) return;
-    const origin = TRANSIT_STATIONS.find(s => s.id === pinnedConfig.dailyCommute!.homeStationId);
-    const dest = TRANSIT_STATIONS.find(s => s.id === pinnedConfig.dailyCommute!.workStationId);
-    if (origin && dest) {
-      setOriginStation(origin);
-      setOriginSearch(origin.name);
-      setDestStation(dest);
-      setDestSearch(dest.name);
-      setActiveTab('planner');
-    }
-  };
-
-  // Recalcul du trajet et des passages en temps réel
-  useEffect(() => {
-    if (!isMetroRouteModalOpen) return;
-    const serverNow = getAlignedNow();
-
-    // 1. Calcul du trajet ponctuel
-    if (originStation && destStation) {
-      const plan = calculateMetroRoute(originStation.id, destStation.id, serverNow);
-      setRoutePlan(plan);
-      if (plan) {
-        setSecondsRemaining(plan.countdownSeconds);
-      }
-    }
-
-    // 2. Départs à la station sélectionnée
-    if (originStation) {
-      const deps = getRealtimeDeparturesForStation(
-        originStation.id,
-        originStation.lines,
-        'normal',
-        serverNow,
-        activeMode
-      );
-      setLiveDepartures(deps.slice(0, 8));
-    }
-
-    // 3. Départs pour le HUB QUOTIDIEN ÉPINGLÉ (filtré sur les lignes épinglées par l'utilisateur)
-    if (pinnedHubStation) {
-      const allHubDeps = getRealtimeDeparturesForStation(
-        pinnedHubStation.id,
-        pinnedHubStation.lines,
-        'normal',
-        serverNow,
-        'all'
-      );
-      // Filtrer prioritairement les lignes épinglées (M13, T3b, Bus 54, Bus 66, etc.)
-      const filteredByPinnedLines = allHubDeps.filter(d => 
-        pinnedConfig.pinnedLines.some(p => normalizeLineKey(p) === normalizeLineKey(d.line))
-      );
-      setPinnedLiveDepartures(filteredByPinnedLines.length > 0 ? filteredByPinnedLines : allHubDeps.slice(0, 8));
-    }
-  }, [originStation, destStation, isMetroRouteModalOpen, activeMode, pinnedHubStation, pinnedConfig.pinnedLines]);
-
-  // Live Ticker : Décompte des secondes et minutes en direct chaque seconde (1s)
-  useEffect(() => {
-    if (!isMetroRouteModalOpen) return;
-
-    const interval = setInterval(() => {
-      const serverNow = getAlignedNow();
-
-      // Décompte ponctuel
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          const refreshed = calculateMetroRoute(originStation.id, destStation.id, serverNow);
-          setRoutePlan(refreshed);
-          return refreshed ? refreshed.countdownSeconds : 180;
-        }
-        return prev - 1;
-      });
-
-      // Rafraîchir les passages en temps réel
-      if (originStation) {
-        const updatedDeps = getRealtimeDeparturesForStation(
-          originStation.id,
-          originStation.lines,
-          'normal',
-          serverNow,
-          activeMode
-        );
-        setLiveDepartures(updatedDeps.slice(0, 8));
-      }
-
-      // Rafraîchir les passages épinglés
-      if (pinnedHubStation) {
-        const allHubDeps = getRealtimeDeparturesForStation(
-          pinnedHubStation.id,
-          pinnedHubStation.lines,
-          'normal',
-          serverNow,
-          'all'
-        );
-        const filtered = allHubDeps.filter(d => 
-          pinnedConfig.pinnedLines.some(p => normalizeLineKey(p) === normalizeLineKey(d.line))
-        );
-        setPinnedLiveDepartures(filtered.length > 0 ? filtered : allHubDeps.slice(0, 8));
-      }
+    const timer = setInterval(() => {
+      setTicker((t) => t + 1);
     }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [isMetroRouteModalOpen, originStation, destStation, activeMode, pinnedHubStation, pinnedConfig.pinnedLines]);
+  // Utilisation explicite du ticker pour forcer le rafraîchissement réactif
+  const currentAlignedTime = useMemo(() => {
+    if (ticker < 0) return getAlignedNow();
+    return getAlignedNow();
+  }, [ticker]);
 
-  // Suggestions filtrées pour le départ
-  const originSuggestions = useMemo(() => {
-    return searchTransitStations(originSearch, activeMode);
-  }, [originSearch, activeMode]);
-
-  // Suggestions filtrées pour l'arrivée
-  const destSuggestions = useMemo(() => {
-    return searchTransitStations(destSearch, activeMode);
-  }, [destSearch, activeMode]);
+  // Chargement des perturbations depuis le serveur
+  useEffect(() => {
+    if (isMetroRouteModalOpen) {
+      fetchNetworkDisruptions().then((data) => {
+        if (data && data.length > 0) setDisruptions(data);
+      });
+      setPinnedStopsList(getPinnedStops());
+    }
+  }, [isMetroRouteModalOpen]);
 
   if (!isMetroRouteModalOpen) return null;
 
-  // Interversion Départ ⇄ Arrivée
-  const handleSwap = () => {
-    const tempStation = originStation;
-    setOriginStation(destStation);
-    setOriginSearch(destStation.name);
+  // Ligne active dans l'explorateur
+  const activeLineData = IDF_LINES_DIRECTORY[normalizeLineKey(selectedLineKey)] || IDF_LINES_DIRECTORY['M13'];
+  const activeLineStyle = getLineStyle(activeLineData.key);
+  const activeDirection = activeLineData.directions[directionIndex] || activeLineData.directions[0];
 
-    setDestStation(tempStation);
-    setDestSearch(tempStation.name);
-    setIsOriginSearchOpen(false);
-    setIsDestSearchOpen(false);
-  };
-
-  // Géolocalisation directe (Bouton "Ma Position")
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert("La géolocalisation n'est pas supportée par votre appareil.");
-      return;
+  // Liste ordonnée des arrêts selon le sens de circulation
+  const displayedStops = useMemo(() => {
+    const rawStops = [...activeLineData.stops];
+    if (directionIndex === 1) {
+      return rawStops.reverse();
     }
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsLocating(false);
-        const nearest = findNearestTransitStation(pos.coords.latitude, pos.coords.longitude);
-        setOriginStation(nearest);
-        setOriginSearch(nearest.name);
-        setIsOriginSearchOpen(false);
-      },
-      () => {
-        setIsLocating(false);
-        const defaultStation = TRANSIT_STATIONS[0];
-        setOriginStation(defaultStation);
-        setOriginSearch(defaultStation.name);
-      },
-      { timeout: 8000, enableHighAccuracy: true }
-    );
+    return rawStops;
+  }, [activeLineData, directionIndex]);
+
+  // Lignes filtrées pour le sélecteur
+  const availableLinesList = useMemo(() => {
+    const all = Object.values(IDF_LINES_DIRECTORY);
+    return all.filter((l) => {
+      if (modeFilter !== 'all' && l.type !== modeFilter) return false;
+      return true;
+    });
+  }, [modeFilter]);
+
+  // Perturbations filtrées
+  const filteredDisruptions = useMemo(() => {
+    return disruptions.filter((d) => {
+      if (disruptionFilter !== 'all' && d.type !== disruptionFilter) return false;
+      return true;
+    });
+  }, [disruptions, disruptionFilter]);
+
+  // Bascule du pinning pour un arrêt
+  const handleTogglePin = (stop: TransitStopItem) => {
+    const pinItem: PinnedTransitStop = {
+      id: `pin-${activeLineData.key}-${stop.id}-${activeDirection.code}`,
+      lineKey: activeLineData.key,
+      stopName: stop.name,
+      stopId: stop.id,
+      direction: activeDirection.destination,
+      directionCode: activeDirection.code,
+      hubId: stop.hubId,
+      addedAt: Date.now(),
+    };
+    togglePinStop(pinItem);
+    setPinnedStopsList(getPinnedStops());
   };
 
-  // Formatage du décompte MM:SS
-  const mins = Math.floor(secondsRemaining / 60);
-  const secs = secondsRemaining % 60;
-  const formattedCountdown = `${mins} min ${secs.toString().padStart(2, '0')}s`;
+  // Trouver si un incident actif (contrôleur ou arrêt HS) touche un arrêt donné
+  const getStopAlerts = (stopName: string) => {
+    const stopClean = stopName.toLowerCase();
+    const relevant = incidents.filter((inc) => {
+      const loc = inc.location_name.toLowerCase();
+      const desc = inc.description.toLowerCase();
+      return loc.includes(stopClean) || desc.includes(stopClean);
+    });
 
-  // Application de l'itinéraire sur la carte
-  const handleVisualizeOnMap = () => {
-    if (!routePlan) return;
-    setActiveMetroRoute(routePlan);
-    closeMetroRouteModal();
-    setMobileActiveTab('map');
-    flyTo(routePlan.origin.lat, routePlan.origin.lng, 14);
+    const controllers = relevant.filter((i) => i.category === 'controleurs');
+    const disruptionsList = relevant.filter((i) => i.category === 'arret_perturbe' || i.category === 'fermeture_station');
+
+    return {
+      hasControllers: controllers.length > 0,
+      controllerCount: controllers.length,
+      hasDisruption: disruptionsList.length > 0,
+      alerts: relevant,
+    };
   };
 
-  const getModeIcon = (type: TransitLineType) => {
-    switch (type) {
-      case 'bus':
-        return <Bus className="w-3.5 h-3.5" />;
-      case 'tram':
-        return <TramFront className="w-3.5 h-3.5" />;
-      case 'rer':
-      case 'train':
-        return <Train className="w-3.5 h-3.5" />;
-      default:
-        return <span className="w-3.5 h-3.5 rounded-full border border-current flex items-center justify-center font-bold text-[9px] font-mono leading-none">M</span>;
-    }
+  const handleComputeRoute = () => {
+    const origin = TRANSIT_STATIONS.find(s => s.name.toLowerCase().includes(originSearch.toLowerCase().trim())) || originStation;
+    const dest = TRANSIT_STATIONS.find(s => s.name.toLowerCase().includes(destSearch.toLowerCase().trim())) || destStation;
+    const result = calculateMetroRoute(origin.id, dest.id);
+    setRoutePlan(result);
+    setActiveMetroRoute(result);
   };
-
-  // Meilleure option en direct pour le quotidien (le train/bus/tram qui arrive le premier)
-  const fastestPinnedDeparture = pinnedLiveDepartures[0];
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      {/* Backdrop overlay */}
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      {/* Backdrop sombre */}
       <div 
         className="fixed inset-0 bg-black/85 backdrop-blur-md transition-opacity cursor-pointer"
         onClick={closeMetroRouteModal}
         aria-hidden="true"
       />
 
-      {/* Modal Container : Mobile Native Bottom Sheet / Desktop Modal centré */}
+      {/* Conteneur principal plein écran sur mobile / modal épuré sur desktop */}
       <div 
-        className="relative w-full h-[94dvh] sm:h-auto sm:max-h-[min(90dvh,840px)] sm:max-w-2xl bg-dark-900 border-t sm:border border-dark-750 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="relative w-full h-[100dvh] sm:h-[92dvh] sm:max-h-[880px] sm:max-w-2xl bg-dark-900 border-0 sm:border border-dark-750 sm:rounded-2xl rounded-none shadow-2xl overflow-hidden flex flex-col z-10 animate-in zoom-in-95 duration-200"
       >
-        {/* Mobile Pull Bar Indicator */}
-        <div className="sm:hidden w-full pt-2 pb-1 flex justify-center bg-dark-950/95 cursor-grab">
-          <div className="w-12 h-1.5 rounded-full bg-slate-700/80" />
-        </div>
-
-        {/* Header avec Safe Area */}
+        {/* ========================================================= */}
+        {/* EN-TÊTE MODALE AVEC SAFE-AREA POUR SMARTPHONE             */}
+        {/* ========================================================= */}
         <div 
-          style={{ paddingTop: 'max(0.6rem, calc(0.3rem + env(safe-area-inset-top, 16px)))' }}
-          className="px-4 sm:px-6 pb-2.5 border-b border-dark-800 flex items-center justify-between bg-dark-950/95 backdrop-blur-md shrink-0"
+          className="px-4 sm:px-6 pb-3 border-b border-dark-800 bg-dark-950/95 backdrop-blur-md shrink-0 flex items-center justify-between"
+          style={{
+            paddingTop: 'max(0.85rem, calc(0.6rem + env(safe-area-inset-top, 20px)))',
+          }}
         >
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
-              <Train className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-cyan-500/20 via-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-400">
+              <Train className="w-4 h-4 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
-                  Transports Île-de-France
-                </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-700/60 flex items-center gap-1">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight">Transports IDF en Temps Réel</h2>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/80 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Temps Réel</span>
+                  RATP Live
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Lignes quotidiennes épinglées & trajets ponctuels
+                Lignes, arrêts défilants, décomptes à la seconde & radar contrôleurs
               </p>
             </div>
           </div>
@@ -400,717 +232,649 @@ export const MetroRouteModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Switcher Supérieur : "📌 Mon Quotidien & Favoris" vs "🔍 Trajet Ponctuel" */}
-        <div className="px-4 sm:px-6 pt-3 pb-2 bg-dark-950/60 border-b border-dark-800/80 flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('daily')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'daily'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950'
-                : 'bg-dark-850 hover:bg-dark-800 text-slate-400 border border-dark-750'
-            }`}
-          >
-            <Pin className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-            <span>Mon Quotidien & Favoris</span>
-          </button>
+        {/* ========================================================= */}
+        {/* BARRE D'ONGLETS PRINCIPALE DU WIDGET                      */}
+        {/* ========================================================= */}
+        <div className="px-3 sm:px-6 pt-2.5 pb-2 bg-dark-950/80 border-b border-dark-800 shrink-0">
+          <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-dark-950 border border-dark-800 text-center">
+            {/* Onglet 1 : Explorateur de Lignes & Arrêts */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('explorer')}
+              className={`py-2 px-1 rounded-lg text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                activeTab === 'explorer'
+                  ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md shadow-indigo-950'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Train className="w-3.5 h-3.5" />
+              <span className="text-[10px] sm:text-xs">Lignes & Arrêts</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('planner')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'planner'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950'
-                : 'bg-dark-850 hover:bg-dark-800 text-slate-400 border border-dark-750'
-            }`}
-          >
-            <Navigation className="w-3.5 h-3.5" />
-            <span>Trajet Ponctuel (IDF)</span>
-          </button>
+            {/* Onglet 2 : Mes Favoris Épinglés */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('pinned')}
+              className={`py-2 px-1 rounded-lg text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                activeTab === 'pinned'
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-500 text-slate-950 shadow-md shadow-amber-950'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5 fill-current" />
+              <span className="text-[10px] sm:text-xs">Épinglés ({pinnedStopsList.length})</span>
+            </button>
+
+            {/* Onglet 3 : Info Trafic & Retards / Grèves */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('disruptions')}
+              className={`py-2 px-1 rounded-lg text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                activeTab === 'disruptions'
+                  ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white shadow-md shadow-rose-950'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span className="text-[10px] sm:text-xs">Retards & Grèves</span>
+            </button>
+
+            {/* Onglet 4 : Trajet Direct */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('planner')}
+              className={`py-2 px-1 rounded-lg text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer active:scale-95 ${
+                activeTab === 'planner'
+                  ? 'bg-dark-800 text-white border border-dark-650 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span className="text-[10px] sm:text-xs">Itinéraire</span>
+            </button>
+          </div>
         </div>
 
-        {/* Corps scrollable sans rebond */}
+        {/* ========================================================= */}
+        {/* CORPS PRINCIPAL SELON L'ONGLET ACTIF                      */}
+        {/* ========================================================= */}
         <div 
-          className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4"
+          className="flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5 space-y-4"
           style={{
-            paddingBottom: 'max(2rem, calc(1.5rem + env(safe-area-inset-bottom, 20px)))',
+            paddingBottom: 'max(2.5rem, calc(2rem + env(safe-area-inset-bottom, 24px)))',
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          {/* ========================================================================= */}
-          {/* ONGLET 1 : MON QUOTIDIEN & LIGNES ÉPINGLÉES (M13, TRAM, BUS, TEMPS RÉEL)   */}
-          {/* ========================================================================= */}
-          {activeTab === 'daily' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              {/* En-tête du Hub Épinglé & Trajet Régulier */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-dark-900 to-indigo-950/40 border border-indigo-500/30 shadow-lg space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-dark-800">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                      <Star className="w-4 h-4 fill-amber-400" />
-                    </div>
+          {/* ======================================================= */}
+          {/* VUE 1 : EXPLORATEUR DE LIGNES & ARRÊTS DÉFILANTS        */}
+          {/* ======================================================= */}
+          {activeTab === 'explorer' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              {/* Sélecteur de Mode (Métro, RER, Tram, Bus, Train) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: 'all', label: 'Toutes les Lignes' },
+                  { id: 'metro', label: 'Métro' },
+                  { id: 'rer', label: 'RER' },
+                  { id: 'tram', label: 'Tramway' },
+                  { id: 'bus', label: 'Bus IDF' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setModeFilter(mode.id as ModeFilter)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition active:scale-95 cursor-pointer ${
+                      modeFilter === mode.id
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                        : 'bg-dark-950/80 text-slate-400 border border-dark-800 hover:border-dark-700'
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Barre de Puces de Lignes Claires & Colorées */}
+              <div className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 no-scrollbar">
+                {availableLinesList.map((line) => {
+                  const style = getLineStyle(line.key);
+                  const isSelected = normalizeLineKey(line.key) === normalizeLineKey(selectedLineKey);
+
+                  return (
+                    <button
+                      key={line.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedLineKey(line.key);
+                        setDirectionIndex(0);
+                      }}
+                      style={{
+                        backgroundColor: isSelected ? style.bg : '#111827',
+                        color: isSelected ? style.text : '#cbd5e1',
+                        borderColor: isSelected ? style.bg : style.bg + '60',
+                      }}
+                      className={`min-w-[48px] h-9 px-2.5 rounded-xl border flex items-center justify-center font-mono font-bold text-xs shrink-0 transition-all duration-150 active:scale-95 cursor-pointer shadow-sm ${
+                        isSelected ? 'ring-2 ring-white/50 scale-105' : 'hover:scale-100 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <span>{style.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Bannière de la Ligne Sélectionnée & Choix du Sens / Terminus */}
+              <div className="p-3.5 rounded-2xl bg-dark-950 border border-dark-750 shadow-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      style={{ backgroundColor: activeLineStyle.bg, color: activeLineStyle.text }}
+                      className="min-w-[34px] h-7 px-2 rounded-lg flex items-center justify-center font-mono font-black text-xs shadow-md shrink-0"
+                    >
+                      {activeLineStyle.label}
+                    </span>
                     <div>
-                      <span className="text-[10px] font-mono uppercase text-slate-400 block font-semibold">
-                        Mon Arrêt / Station Principal
-                      </span>
-                      <h4 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-1.5">
-                        <span>{pinnedHubStation.name}</span>
-                        {pinnedHubStation.district && (
-                          <span className="text-[11px] font-normal text-slate-400">
-                            ({pinnedHubStation.district})
-                          </span>
-                        )}
-                      </h4>
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <span>Ligne {activeLineStyle.fullName}</span>
+                        <span className="text-[10px] font-normal text-slate-400">({activeLineData.stops.length} arrêts)</span>
+                      </div>
+                      <div className="text-[11px] text-cyan-400 font-medium">
+                        Direction : {activeDirection.destination}
+                      </div>
                     </div>
                   </div>
 
+                  {/* Bouton Inverser le Sens */}
                   <button
                     type="button"
-                    onClick={() => setIsEditingHub(!isEditingHub)}
-                    className="px-2.5 py-1 rounded-lg bg-dark-800 hover:bg-dark-750 border border-dark-700 text-[11px] text-slate-300 font-mono font-medium flex items-center gap-1 transition"
+                    onClick={() => setDirectionIndex(directionIndex === 0 ? 1 : 0)}
+                    className="p-2 rounded-xl bg-dark-850 hover:bg-dark-800 border border-dark-700 text-slate-300 hover:text-white flex items-center gap-1.5 text-xs font-semibold transition active:scale-95 cursor-pointer"
+                    title="Inverser le sens de circulation"
                   >
-                    <Edit3 className="w-3 h-3 text-indigo-400" />
-                    <span>{isEditingHub ? 'Fermer' : 'Changer'}</span>
+                    <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="hidden sm:inline">Inverser le Sens</span>
                   </button>
                 </div>
 
-                {/* Sélecteur de station favorite si modification */}
-                {isEditingHub && (
-                  <div className="p-3 rounded-xl bg-dark-950 border border-dark-750 space-y-2">
-                    <span className="text-[11px] font-mono text-slate-300 block">
-                      Sélectionnez votre station quotidienne de référence :
-                    </span>
-                    <select
-                      value={pinnedConfig.pinnedHubId}
-                      onChange={(e) => handleSelectPinnedHub(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-dark-900 border border-dark-700 text-xs font-semibold text-white focus:outline-none focus:border-indigo-500"
-                    >
-                      {TRANSIT_STATIONS.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} {s.district ? `(${s.district})` : ''} - {s.lines.join(', ')}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                {/* Bascule Rapide Terminus A ↔ Terminus B */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setDirectionIndex(0)}
+                    className={`p-2 rounded-xl border text-left transition active:scale-95 cursor-pointer ${
+                      directionIndex === 0
+                        ? 'bg-indigo-950/70 border-indigo-500/80 text-white shadow-md'
+                        : 'bg-dark-900 border-dark-800 text-slate-400 hover:text-slate-300'
+                    }`}
+                  >
+                    <div className="text-[10px] uppercase font-mono text-cyan-400 font-bold">Terminus 1</div>
+                    <div className="font-semibold truncate text-[11px]">{activeLineData.directions[0].destination}</div>
+                  </button>
 
-                {/* Bannières du Trajet Quotidien Épinglé */}
-                {pinnedConfig.dailyCommute && (
-                  <div className="p-2.5 rounded-xl bg-dark-950/80 border border-dark-750 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-mono uppercase text-indigo-400 font-bold block">
-                        Trajet Fréquent Enregistré
-                      </span>
-                      <span className="text-xs font-bold text-slate-200 truncate block">
-                        {pinnedConfig.dailyCommute.name}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleLaunchDailyCommute}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-bold flex items-center gap-1.5 shrink-0 transition shadow-md shadow-indigo-950 active:scale-95"
-                    >
-                      <Zap className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Lancer</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Lignes surveillées à cet arrêt */}
-                <div className="pt-1">
-                  <span className="text-[10px] font-mono uppercase text-slate-400 block mb-1.5 font-semibold">
-                    Lignes surveillées (cliquez pour épingler / retirer) :
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {pinnedHubStation.lines.map((lineKey) => {
-                      const isPinned = pinnedConfig.pinnedLines.some(p => normalizeLineKey(p) === normalizeLineKey(lineKey));
-                      const style = getLineStyle(lineKey);
-
-                      return (
-                        <button
-                          key={lineKey}
-                          type="button"
-                          onClick={() => togglePinLine(lineKey)}
-                          style={{
-                            backgroundColor: isPinned ? style.bg : `${style.bg}22`,
-                            color: isPinned ? style.text : '#f8fafc',
-                            borderColor: style.bg,
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
-                            isPinned ? 'ring-2 ring-amber-400/50 shadow-md scale-105' : 'opacity-90 hover:opacity-100 hover:scale-102'
-                          }`}
-                          title={isPinned ? 'Ligne épinglée (cliquez pour retirer)' : 'Cliquez pour surveiller cette ligne'}
-                        >
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isPinned ? style.text : style.bg }} />
-                          <span>{style.fullName}</span>
-                          {isPinned ? (
-                            <Pin className="w-3 h-3 fill-amber-400 text-amber-400 ml-0.5" />
-                          ) : (
-                            <span className="text-[10px] opacity-70 ml-0.5">+</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDirectionIndex(1)}
+                    className={`p-2 rounded-xl border text-left transition active:scale-95 cursor-pointer ${
+                      directionIndex === 1
+                        ? 'bg-indigo-950/70 border-indigo-500/80 text-white shadow-md'
+                        : 'bg-dark-900 border-dark-800 text-slate-400 hover:text-slate-300'
+                    }`}
+                  >
+                    <div className="text-[10px] uppercase font-mono text-cyan-400 font-bold">Terminus 2</div>
+                    <div className="font-semibold truncate text-[11px]">{activeLineData.directions[1].destination}</div>
+                  </button>
                 </div>
               </div>
 
-              {/* ENCADRÉ « QUE PRENDRE EN PREMIER ? » (COMPARATEUR DIRECT MULTI-LIGNES) */}
-              {fastestPinnedDeparture && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-dark-900 to-indigo-950/80 border border-emerald-500/40 shadow-lg">
-                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-900/40">
-                    <span className="text-[11px] font-mono font-bold uppercase text-emerald-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                      Recommandation : Que prendre maintenant ?
-                    </span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-700/60">
-                      Plus Rapide
-                    </span>
-                  </div>
+              {/* TIMELINE DÉFILANTE DE TOUS LES ARRÊTS DE LA LIGNE */}
+              <div className="space-y-1 relative pl-2 sm:pl-3">
+                {/* Ligne verticale conductrice aux couleurs de la ligne */}
+                <div 
+                  style={{ backgroundColor: activeLineStyle.bg }}
+                  className="absolute left-[17px] sm:left-[21px] top-4 bottom-4 w-1 rounded-full opacity-70 z-0"
+                />
 
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {(() => {
-                        const style = getLineStyle(fastestPinnedDeparture.line);
-                        return (
-                          <span
-                            style={{ backgroundColor: style.bg, color: style.text }}
-                            className="min-w-[28px] h-7 px-1.5 rounded-xl flex items-center justify-center font-extrabold text-xs font-mono shrink-0 shadow-sm"
-                          >
-                            {style.label}
-                          </span>
-                        );
-                      })()}
-                      <div className="min-w-0">
-                        <span className="text-xs font-extrabold text-white block truncate">
-                          {getLineStyle(fastestPinnedDeparture.line).fullName} ➔ {fastestPinnedDeparture.destination}
-                        </span>
-                        <span className="text-[11px] text-slate-300 block">
-                          Passe en premier à quai
-                        </span>
+                {displayedStops.map((stop, idx) => {
+                  const isPinned = isStopPinned(stop.name, activeLineData.key, activeDirection.destination);
+                  const dep = getStopRealtimeDeparture(
+                    stop.id,
+                    stop.order,
+                    displayedStops.length,
+                    activeLineData.key,
+                    activeDirection.code,
+                    currentAlignedTime
+                  );
+                  const alerts = getStopAlerts(stop.name);
+                  const isTerminal = idx === 0 || idx === displayedStops.length - 1;
+
+                  return (
+                    <div 
+                      key={stop.id}
+                      className="relative z-10 flex items-start gap-3.5 py-1.5"
+                    >
+                      {/* Pastille sur l'axe de la ligne */}
+                      <div className="shrink-0 pt-1">
+                        <div 
+                          style={{ borderColor: activeLineStyle.bg }}
+                          className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isTerminal ? 'bg-white shadow-md scale-110' : 'bg-dark-950'
+                          }`}
+                        >
+                          <div 
+                            style={{ backgroundColor: activeLineStyle.bg }}
+                            className="w-1.5 h-1.5 rounded-full"
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="text-right shrink-0">
-                      <span className="text-base sm:text-lg font-mono font-extrabold text-emerald-400 block">
-                        {fastestPinnedDeparture.remainingDisplay}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400 block">
-                        Suivant: {fastestPinnedDeparture.followingDisplay}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TABLEAU EN TEMPS RÉEL DES LIGNES ÉPINGLÉES */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="text-xs font-bold text-white uppercase font-mono">
-                      Passages en direct à {pinnedHubStation.name}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Live 1s
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {pinnedLiveDepartures.map((dep, idx) => {
-                    const style = getLineStyle(dep.line);
-                    const isApproaching = dep.remainingMinutes === 0;
-
-                    return (
-                      <div 
-                        key={idx}
-                        className="p-2.5 rounded-xl bg-dark-900 border border-dark-800 flex items-center justify-between gap-2 shadow-sm hover:border-dark-700 transition"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            style={{ backgroundColor: style.bg, color: style.text }}
-                            className="min-w-[24px] h-6 px-1 rounded-md flex items-center justify-center font-bold text-[11px] font-mono shrink-0 shadow-sm"
-                          >
-                            {style.label}
-                          </span>
+                      {/* Carte d'arrêt interactive */}
+                      <div className="flex-1 p-2.5 sm:p-3 rounded-xl bg-dark-950/90 border border-dark-800 hover:border-dark-700 transition shadow-sm space-y-2">
+                        {/* Ligne 1 : Nom de la station & Décompte Live */}
+                        <div className="flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <span className="text-xs font-semibold text-slate-200 block truncate">
-                              {dep.destination}
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+                                {stop.name}
+                              </h4>
+                              {stop.isAccessiblePmr && (
+                                <span className="text-[10px] text-sky-400" title="Accessible PMR">♿</span>
+                              )}
+                            </div>
+                            {stop.city && (
+                              <p className="text-[10px] text-slate-400">{stop.city}</p>
+                            )}
+                          </div>
+
+                          {/* Décompte temps réel vivant */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span 
+                              className={`px-2 py-0.5 rounded-lg font-mono font-bold text-xs flex items-center gap-1.5 shadow-sm ${
+                                dep.isApproaching
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 animate-pulse'
+                                  : 'bg-indigo-950 text-indigo-300 border border-indigo-800/80'
+                              }`}
+                            >
+                              {dep.isApproaching && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              )}
+                              <span>{dep.remainingDisplay}</span>
+                              <span className="text-[10px] font-normal text-slate-400 font-sans hidden xs:inline">
+                                ({dep.departureTime})
+                              </span>
                             </span>
-                            <span className="text-[10px] font-mono text-slate-400 block">
-                              Suivant: {dep.followingDisplay}
-                            </span>
+
+                            {/* Bouton Pin ⭐ */}
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePin(stop)}
+                              className={`p-1.5 rounded-lg border transition active:scale-95 cursor-pointer ${
+                                isPinned
+                                  ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-sm'
+                                  : 'bg-dark-900 border-dark-800 text-slate-400 hover:text-white'
+                              }`}
+                              title={isPinned ? 'Retirer des favoris' : 'Épingler cet arrêt'}
+                            >
+                              <Star className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0">
+                        {/* Ligne 2 : Badges des Correspondances Disponibles */}
+                        {stop.lines && stop.lines.length > 1 && (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                            <span className="text-[10px] font-mono text-slate-500">Corr. :</span>
+                            {stop.lines
+                              .filter((l) => normalizeLineKey(l) !== normalizeLineKey(activeLineData.key))
+                              .map((corrLine) => {
+                                const corrStyle = getLineStyle(corrLine);
+                                return (
+                                  <button
+                                    key={corrLine}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedLineKey(corrLine);
+                                      setDirectionIndex(0);
+                                    }}
+                                    style={{ backgroundColor: corrStyle.bg, color: corrStyle.text }}
+                                    className="min-w-[20px] h-4 px-1 rounded text-[9px] font-mono font-bold flex items-center justify-center cursor-pointer transition active:scale-90 hover:opacity-90 shadow-xs"
+                                    title={`Basculer vers la ligne ${corrStyle.fullName}`}
+                                  >
+                                    {corrStyle.label}
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        )}
+
+                        {/* Bannières d'Alertes Actives sur cet Arrêt */}
+                        {alerts.hasControllers && (
+                          <div className="p-1.5 rounded-lg bg-indigo-950/80 border border-indigo-500/60 text-[11px] text-indigo-200 flex items-center justify-between gap-2 animate-in fade-in">
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-sm">👮</span>
+                              <span className="font-semibold">Contrôleurs signalés récemment à cet arrêt !</span>
+                            </span>
+                            <span className="text-[9px] font-mono bg-indigo-900 px-1 py-0.5 rounded text-indigo-300">
+                              Radar Actif
+                            </span>
+                          </div>
+                        )}
+
+                        {alerts.hasDisruption && (
+                          <div className="p-1.5 rounded-lg bg-rose-950/80 border border-rose-500/60 text-[11px] text-rose-200 flex items-center gap-1.5 animate-in fade-in">
+                            <span className="text-sm">🚫</span>
+                            <span className="font-semibold">Arrêt perturbé ou accès réduit signalé par les usagers.</span>
+                          </div>
+                        )}
+
+                        {/* Actions Rapides pour cet Arrêt */}
+                        <div className="flex items-center justify-between pt-1 border-t border-dark-850 text-[10px] font-mono">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              flyTo(stop.lat, stop.lng, 16);
+                              closeMetroRouteModal();
+                            }}
+                            className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Navigation className="w-3 h-3" />
+                            <span>Voir sur la carte</span>
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={openReportModal}
+                              className="text-slate-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                              title="Signaler des contrôleurs ici"
+                            >
+                              <span>👮 Signaler</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================= */}
+          {/* VUE 2 : MES TRANSPORTS ÉPINGLÉS (TABLEAU DE BORD)       */}
+          {/* ======================================================= */}
+          {activeTab === 'pinned' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                    <Star className="w-4 h-4 text-amber-400 fill-current" />
+                    <span>Vos Lignes & Arrêts Favoris</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Décomptes en direct synchronisés avec le serveur
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('explorer')}
+                  className="px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Ajouter un arrêt</span>
+                </button>
+              </div>
+
+              {pinnedStopsList.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl bg-dark-950 border border-dark-800 space-y-3">
+                  <Star className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p className="text-xs text-slate-300 font-semibold">Aucun arrêt épinglé pour le moment.</p>
+                  <p className="text-[11px] text-slate-400">
+                    Allez dans l'onglet "Lignes & Arrêts" et cliquez sur l'étoile ⭐ pour ajouter vos lignes du quotidien.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('explorer')}
+                    className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Explorer les lignes IDF
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {pinnedStopsList.map((pin) => {
+                    const style = getLineStyle(pin.lineKey);
+                    const dep = getStopRealtimeDeparture(
+                      pin.stopId,
+                      3,
+                      15,
+                      pin.lineKey,
+                      pin.directionCode || 'DIR',
+                      currentAlignedTime
+                    );
+
+                    return (
+                      <div
+                        key={pin.id}
+                        className="p-3 rounded-2xl bg-dark-950 border border-dark-750 hover:border-dark-650 transition flex items-center justify-between gap-3 shadow-md"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Badge de la ligne */}
+                          <span
+                            style={{ backgroundColor: style.bg, color: style.text }}
+                            className="min-w-[28px] h-7 px-1.5 rounded-lg flex items-center justify-center font-mono font-black text-xs shrink-0 shadow-sm"
+                          >
+                            {style.label}
+                          </span>
+
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-white truncate">
+                              {pin.stopName}
+                            </div>
+                            <div className="text-[10px] text-cyan-400 truncate">
+                              ➜ {pin.direction}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
                           <span 
-                            className={`font-mono font-bold text-xs px-2 py-0.5 rounded-md inline-block ${
-                              isApproaching
-                                ? 'bg-emerald-500/20 text-emerald-300 animate-pulse border border-emerald-500/40'
-                                : 'bg-dark-800 text-emerald-400 border border-dark-700'
+                            className={`px-2 py-1 rounded-lg font-mono font-bold text-xs flex items-center gap-1.5 ${
+                              dep.isApproaching
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 animate-pulse'
+                                : 'bg-indigo-950 text-indigo-300 border border-indigo-800/80'
                             }`}
                           >
-                            {dep.remainingDisplay}
+                            {dep.isApproaching && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            )}
+                            <span>{dep.remainingDisplay}</span>
                           </span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              togglePinStop(pin);
+                              setPinnedStopsList(getPinnedStops());
+                            }}
+                            className="p-1.5 rounded-lg bg-dark-900 hover:bg-dark-800 text-amber-400 border border-dark-750 transition active:scale-90 cursor-pointer"
+                            title="Désépingler"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                          </button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ======================================================= */}
+          {/* VUE 3 : INFO TRAFIC IDF (RETARDS, ANNULATIONS & GRÈVES)  */}
+          {/* ======================================================= */}
+          {activeTab === 'disruptions' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-400" />
+                    <span>Info Trafic & Perturbations Réseau</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Retards, trains supprimés, alertes grèves et pannes d'escalators
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={openReportModal}
+                  className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Signaler un problème</span>
+                </button>
+              </div>
+
+              {/* Filtres de perturbations */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { id: 'all', label: 'Toutes les alertes' },
+                  { id: 'delay', label: '⏱️ Retards majeurs' },
+                  { id: 'cancellation', label: '🚫 Trains supprimés' },
+                  { id: 'strike', label: '🪧 Grèves & Préavis' },
+                  { id: 'station_closure', label: '♿ Pannes & Arrêts HS' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setDisruptionFilter(f.id as DisruptionFilter)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition active:scale-95 cursor-pointer ${
+                      disruptionFilter === f.id
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        : 'bg-dark-950/80 text-slate-400 border border-dark-800 hover:border-dark-700'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Liste des perturbations */}
+              <div className="space-y-2.5">
+                {filteredDisruptions.map((disrup) => {
+                  const style = getLineStyle(disrup.lineKey);
+
+                  return (
+                    <div
+                      key={disrup.id}
+                      className="p-3.5 rounded-2xl bg-dark-950 border border-dark-750 hover:border-dark-650 transition space-y-2 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            style={{ backgroundColor: style.bg, color: style.text }}
+                            className="min-w-[26px] h-6 px-1.5 rounded-md flex items-center justify-center font-mono font-black text-xs shrink-0"
+                          >
+                            {style.label}
+                          </span>
+                          <span className="font-bold text-xs text-white">
+                            {disrup.title}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                          {disrup.updatedAt}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        {disrup.description}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-dark-800 text-[10px] font-mono text-slate-400">
+                        {disrup.impactedSection && (
+                          <span className="text-rose-400">Tronçon : {disrup.impactedSection}</span>
+                        )}
+                        {disrup.estimatedResolution && (
+                          <span className="text-slate-400">{disrup.estimatedResolution}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* ========================================================================= */}
-          {/* ONGLET 2 : TRAJET PONCTUEL (PLANIFICATEUR MULTIMODAL DANS TOUTE L'IDF)      */}
-          {/* ========================================================================= */}
+          {/* ======================================================= */}
+          {/* VUE 4 : ITINÉRAIRE DIRECT (POINT A ➔ POINT B)           */}
+          {/* ======================================================= */}
           {activeTab === 'planner' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              {/* Onglets Filtres de Transport */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('all')}
-                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition flex items-center gap-1.5 ${
-                    activeMode === 'all'
-                      ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-950'
-                      : 'bg-dark-850 hover:bg-dark-800 text-slate-300 border border-dark-750'
-                  }`}
-                >
-                  <span>✨ Tous</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('metro')}
-                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition flex items-center gap-1.5 ${
-                    activeMode === 'metro'
-                      ? 'bg-amber-500 text-black font-bold shadow-md shadow-amber-950'
-                      : 'bg-dark-850 hover:bg-dark-800 text-slate-300 border border-dark-750'
-                  }`}
-                >
-                  <span className="w-3.5 h-3.5 rounded-full border border-current flex items-center justify-center font-bold text-[9px] font-mono leading-none">M</span>
-                  <span>Métro (1-14)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('rer')}
-                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition flex items-center gap-1.5 ${
-                    activeMode === 'rer'
-                      ? 'bg-rose-600 text-white font-bold shadow-md shadow-rose-950'
-                      : 'bg-dark-850 hover:bg-dark-800 text-slate-300 border border-dark-750'
-                  }`}
-                >
-                  <Train className="w-3.5 h-3.5" />
-                  <span>Train & RER</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('tram')}
-                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition flex items-center gap-1.5 ${
-                    activeMode === 'tram'
-                      ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-950'
-                      : 'bg-dark-850 hover:bg-dark-800 text-slate-300 border border-dark-750'
-                  }`}
-                >
-                  <TramFront className="w-3.5 h-3.5" />
-                  <span>Tram</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveMode('bus')}
-                  className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition flex items-center gap-1.5 ${
-                    activeMode === 'bus'
-                      ? 'bg-sky-600 text-white font-bold shadow-md shadow-sky-950'
-                      : 'bg-dark-850 hover:bg-dark-800 text-slate-300 border border-dark-750'
-                  }`}
-                >
-                  <Bus className="w-3.5 h-3.5" />
-                  <span>Bus</span>
-                </button>
-              </div>
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div className="p-3 rounded-2xl bg-dark-950 border border-dark-750 space-y-3">
+                <h3 className="text-xs font-bold text-white">Calculateur d'Itinéraire Multimodal</h3>
 
-              {/* Module de Recherche Départ & Arrivée */}
-              <div className="relative p-3.5 sm:p-4 rounded-2xl bg-dark-950/90 border border-dark-800 shadow-lg">
-                <div className="absolute left-6 top-7 bottom-7 w-0.5 bg-dashed bg-gradient-to-b from-emerald-500 via-indigo-500 to-rose-500 opacity-60 z-0 pointer-events-none" />
-
-                <div className="space-y-3 relative z-10">
-                  {/* Champ Départ */}
-                  <div className="relative">
-                    <div className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl bg-dark-900 border border-dark-700/80 focus-within:border-emerald-500 transition shadow-inner">
-                      <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500 flex items-center justify-center shrink-0">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      </div>
-                      <input
-                        ref={originInputRef}
-                        type="text"
-                        value={originSearch}
-                        onChange={(e) => {
-                          setOriginSearch(e.target.value);
-                          setIsOriginSearchOpen(true);
-                        }}
-                        onFocus={() => {
-                          setIsOriginSearchOpen(true);
-                          setIsDestSearchOpen(false);
-                        }}
-                        placeholder="D'où partez-vous en IDF ? (Gare, métro, arrêt...)"
-                        className="flex-1 bg-transparent py-1.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none font-medium"
-                      />
-                      {originSearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOriginSearch('');
-                            originInputRef.current?.focus();
-                          }}
-                          className="p-1 text-slate-400 hover:text-white"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleUseCurrentLocation}
-                        disabled={isLocating}
-                        className="px-2 py-1 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/50 text-[10px] font-mono font-bold text-emerald-300 flex items-center gap-1 transition shrink-0 active:scale-95"
-                        title="Prendre la station la plus proche de ma position"
-                      >
-                        <LocateFixed className={`w-3 h-3 text-emerald-400 ${isLocating ? 'animate-spin' : ''}`} />
-                        <span className="hidden sm:inline">Ma Position</span>
-                      </button>
-                    </div>
-
-                    {/* Dropdown autocomplétion Départ */}
-                    {isOriginSearchOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl bg-dark-900 border border-dark-750 shadow-2xl z-30 divide-y divide-dark-800">
-                        <div className="p-2 bg-dark-950 text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
-                          <span>Stations & arrêts trouvés ({originSuggestions.length})</span>
-                          <button 
-                            type="button" 
-                            onClick={() => setIsOriginSearchOpen(false)}
-                            className="text-slate-400 hover:text-white"
-                          >
-                            Fermer
-                          </button>
-                        </div>
-                        {originSuggestions.map((station) => (
-                          <button
-                            key={station.id}
-                            type="button"
-                            onClick={() => {
-                              setOriginStation(station);
-                              setOriginSearch(station.name);
-                              setIsOriginSearchOpen(false);
-                            }}
-                            className="w-full text-left p-2.5 hover:bg-dark-800/80 transition flex items-center justify-between gap-2 cursor-pointer"
-                          >
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                                <span className="text-slate-400">{getModeIcon(station.types[0])}</span>
-                                <span>{station.name}</span>
-                                {station.district && (
-                                  <span className="text-[10px] text-slate-400 font-normal">
-                                    ({station.district})
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {station.lines.slice(0, 6).map((line) => {
-                                  const style = getLineStyle(line);
-                                  return (
-                                    <span
-                                      key={line}
-                                      style={{ backgroundColor: style.bg, color: style.text }}
-                                      className="text-[9px] font-mono font-bold px-1 rounded-sm"
-                                    >
-                                      {style.label}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                            {station.id === originStation.id && (
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Départ</label>
+                    <input
+                      type="text"
+                      value={originSearch}
+                      onChange={(e) => setOriginSearch(e.target.value)}
+                      placeholder="Gare ou station de départ..."
+                      className="w-full p-2 bg-dark-900 border border-dark-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
                   </div>
 
-                  {/* Bouton Inverser Départ ⇄ Arrivée */}
-                  <div className="flex justify-end -my-1 pr-3">
-                    <button
-                      type="button"
-                      onClick={handleSwap}
-                      className="p-1.5 rounded-full bg-dark-800 hover:bg-dark-750 active:bg-dark-700 border border-dark-700 text-indigo-400 hover:text-white transition active:scale-95 cursor-pointer shadow-sm flex items-center gap-1 text-[10px] font-mono"
-                      title="Inverser départ et arrivée"
-                    >
-                      <ArrowUpDown className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Inverser</span>
-                    </button>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Arrivée</label>
+                    <input
+                      type="text"
+                      value={destSearch}
+                      onChange={(e) => setDestSearch(e.target.value)}
+                      placeholder="Gare ou station d'arrivée..."
+                      className="w-full p-2 bg-dark-900 border border-dark-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
                   </div>
 
-                  {/* Champ Arrivée */}
-                  <div className="relative">
-                    <div className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl bg-dark-900 border border-dark-700/80 focus-within:border-indigo-500 transition shadow-inner">
-                      <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500 flex items-center justify-center shrink-0">
-                        <Navigation className="w-3 h-3 text-indigo-400" />
-                      </div>
-                      <input
-                        ref={destInputRef}
-                        type="text"
-                        value={destSearch}
-                        onChange={(e) => {
-                          setDestSearch(e.target.value);
-                          setIsDestSearchOpen(true);
-                        }}
-                        onFocus={() => {
-                          setIsDestSearchOpen(true);
-                          setIsOriginSearchOpen(false);
-                        }}
-                        placeholder="Où allez-vous ? (Destination en IDF...)"
-                        className="flex-1 bg-transparent py-1.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none font-medium"
-                      />
-                      {destSearch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDestSearch('');
-                            destInputRef.current?.focus();
-                          }}
-                          className="p-1 text-slate-400 hover:text-white"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Dropdown autocomplétion Arrivée */}
-                    {isDestSearchOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-xl bg-dark-900 border border-dark-750 shadow-2xl z-30 divide-y divide-dark-800">
-                        <div className="p-2 bg-dark-950 text-[10px] font-mono text-slate-400 uppercase flex items-center justify-between">
-                          <span>Destinations trouvées ({destSuggestions.length})</span>
-                          <button 
-                            type="button" 
-                            onClick={() => setIsDestSearchOpen(false)}
-                            className="text-slate-400 hover:text-white"
-                          >
-                            Fermer
-                          </button>
-                        </div>
-                        {destSuggestions.map((station) => (
-                          <button
-                            key={station.id}
-                            type="button"
-                            onClick={() => {
-                              setDestStation(station);
-                              setDestSearch(station.name);
-                              setIsDestSearchOpen(false);
-                            }}
-                            className="w-full text-left p-2.5 hover:bg-dark-800/80 transition flex items-center justify-between gap-2 cursor-pointer"
-                          >
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                                <span className="text-slate-400">{getModeIcon(station.types[0])}</span>
-                                <span>{station.name}</span>
-                                {station.district && (
-                                  <span className="text-[10px] text-slate-400 font-normal">
-                                    ({station.district})
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {station.lines.slice(0, 6).map((line) => {
-                                  const style = getLineStyle(line);
-                                  return (
-                                    <span
-                                      key={line}
-                                      style={{ backgroundColor: style.bg, color: style.text }}
-                                      className="text-[9px] font-mono font-bold px-1 rounded-sm"
-                                    >
-                                      {style.label}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                            {station.id === destStation.id && (
-                              <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tableau des prochains départs en direct à la station de départ sélectionnée */}
-              {liveDepartures.length > 0 && (
-                <div className="p-3.5 rounded-2xl bg-dark-950/80 border border-dark-800 space-y-2">
-                  <div className="flex items-center justify-between text-xs pb-1.5 border-b border-dark-800">
-                    <span className="font-bold text-white font-mono flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                      Passages en direct à {originStation.name}
-                    </span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      En direct
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {liveDepartures.slice(0, 4).map((dep, idx) => {
-                      const style = getLineStyle(dep.line);
-                      return (
-                        <div key={idx} className="p-2 rounded-xl bg-dark-900 border border-dark-750 flex items-center justify-between gap-2 text-xs">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span style={{ backgroundColor: style.bg, color: style.text }} className="w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px] font-mono shrink-0">
-                              {style.label}
-                            </span>
-                            <span className="text-[11px] text-slate-200 truncate font-medium">{dep.destination}</span>
-                          </div>
-                          <span className="font-mono font-bold text-emerald-400 text-[11px] shrink-0">{dep.remainingDisplay}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* RÉSULTAT DU TRAJET OPTIMAL CALCULÉ */}
-              {routePlan && (
-                <div className="space-y-3 animate-in fade-in duration-150">
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-950/60 to-dark-900 border border-indigo-500/40 shadow-xl">
-                    <div className="flex items-center justify-between pb-3 border-b border-indigo-900/40 mb-3">
-                      <div className="flex items-center gap-2">
-                        <Navigation className="w-4 h-4 text-indigo-400" />
-                        <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                          Itinéraire direct & correspondances
-                        </span>
-                      </div>
-
-                      {/* Bouton pour épingler ce trajet comme trajet quotidien */}
-                      <button
-                        type="button"
-                        onClick={handleSetCurrentAsDailyCommute}
-                        className="px-2.5 py-1 rounded-lg bg-dark-800 hover:bg-dark-750 border border-dark-700 text-[10px] font-mono text-amber-400 font-bold flex items-center gap-1 transition active:scale-95"
-                        title="Épingler comme trajet quotidien"
-                      >
-                        <Pin className="w-3 h-3 fill-amber-400" />
-                        <span>Épingler ce trajet</span>
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-center">
-                      <div className="p-2.5 rounded-xl bg-dark-900/80 border border-dark-800">
-                        <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">
-                          Départ à quai
-                        </span>
-                        <span className="text-xl sm:text-2xl font-extrabold font-mono text-white block">
-                          {routePlan.departureTime}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400">
-                          Suivant: {routePlan.legs[0]?.followingDepartureTime}
-                        </span>
-                      </div>
-
-                      <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40">
-                        <span className="text-[10px] font-mono text-emerald-300 uppercase block mb-1 flex items-center justify-center gap-1">
-                          <Timer className="w-3 h-3 text-emerald-400 animate-spin" />
-                          Décompte
-                        </span>
-                        <span className="text-xl sm:text-2xl font-extrabold font-mono text-emerald-400 block tracking-tight">
-                          {mins === 0 && secs < 30 ? "À l'approche" : formattedCountdown}
-                        </span>
-                        <span className="text-[10px] font-mono text-emerald-300/80">
-                          Arrivée : {routePlan.arrivalTime} ({routePlan.totalDurationMin} min)
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 pt-2.5 border-t border-indigo-900/40 flex items-center justify-between text-xs text-slate-300">
-                      <span className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{routePlan.recommendation}</span>
-                      </span>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                        Trafic Fluide
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Étapes du parcours */}
-                  <div className="space-y-2">
-                    <span className="text-[11px] font-mono uppercase text-slate-400 font-semibold block px-1">
-                      Détail des correspondances :
-                    </span>
-
-                    {routePlan.legs.map((leg, idx) => {
-                      const style = getLineStyle(leg.line);
-
-                      return (
-                        <div 
-                          key={idx}
-                          className="p-3 rounded-xl bg-dark-900 border border-dark-800 space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span
-                                style={{ backgroundColor: style.bg, color: style.text }}
-                                className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs font-mono shadow-sm"
-                              >
-                                {style.label}
-                              </span>
-                              <span className="font-bold text-xs text-white">
-                                {leg.line} · Dir. {leg.direction}
-                              </span>
-                            </div>
-
-                            <span className="text-[10px] font-mono text-slate-400 bg-dark-800 px-2 py-0.5 rounded border border-dark-750">
-                              {leg.stopsCount} arrêts ({leg.durationMin} min)
-                            </span>
-                          </div>
-
-                          <div className="pl-8 text-xs space-y-1 text-slate-300">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                                <strong className="text-white">{leg.fromStation}</strong>
-                              </span>
-                              <span className="font-mono text-emerald-400 font-semibold text-[11px]">
-                                {leg.exactDepartureTime}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                              <span className="flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-slate-500" />
-                                <span>{leg.toStation}</span>
-                              </span>
-                              <span className="font-mono">
-                                {idx === routePlan.legs.length - 1 ? routePlan.arrivalTime : 'Correspondance'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Bouton Tracer sur la Carte */}
                   <button
                     type="button"
-                    onClick={handleVisualizeOnMap}
-                    className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold font-mono transition flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-950 active:scale-[0.98]"
+                    onClick={handleComputeRoute}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
                   >
-                    <Compass className="w-4 h-4" />
-                    <span>Afficher le trajet sur la carte interactive</span>
-                    <ArrowRight className="w-4 h-4 ml-1" />
+                    Calculer le Trajet le Plus Rapide
                   </button>
+                </div>
+              </div>
+
+              {routePlan && (
+                <div className="p-3.5 rounded-2xl bg-dark-950 border border-dark-750 space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-white">
+                      Durée : ~{routePlan.totalDurationMin} min ({routePlan.transfersCount} correspondance{routePlan.transfersCount > 1 ? 's' : ''})
+                    </span>
+                    <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800/60">
+                      Départ : {routePlan.departureTime}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-dark-800">
+                    {routePlan.legs.map((leg, idx) => {
+                      const legStyle = getLineStyle(leg.line);
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-xs text-slate-300">
+                          <span
+                            style={{ backgroundColor: legStyle.bg, color: legStyle.text }}
+                            className="min-w-[24px] h-5 px-1 rounded flex items-center justify-center font-mono font-bold text-[10px]"
+                          >
+                            {legStyle.label}
+                          </span>
+                          <span>De <strong>{leg.fromStation}</strong> à <strong>{leg.toStation}</strong></span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

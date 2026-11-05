@@ -50,10 +50,66 @@ const MapController: React.FC = () => {
 };
 
 // Custom DivIcons for Leaflet
-const createIncidentIcon = (severity: Incident['severity'], reportsCount?: number) => {
+const createIncidentIcon = (severity: Incident['severity'], reportsCount?: number, category?: Incident['category']) => {
   const badgeHtml = reportsCount && reportsCount > 1
     ? `<span class="absolute -top-1.5 -right-2 px-1 py-0.5 bg-slate-950 text-amber-300 font-mono font-black text-[9px] rounded-full border border-amber-400 shadow-md">×${reportsCount}</span>`
     : '';
+
+  // Icône dédiée Radar Contrôleurs
+  if (category === 'controleurs') {
+    return L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `
+        <div class="relative flex items-center justify-center cursor-pointer">
+          <span class="animate-ping absolute inline-flex h-9 w-9 rounded-full bg-indigo-500 opacity-60"></span>
+          <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-700 to-indigo-500 text-white border-2 border-indigo-200 shadow-xl shadow-indigo-950">
+            <span class="text-sm select-none">👮</span>
+          </div>
+          ${badgeHtml}
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -20],
+    });
+  }
+
+  // Icône dédiée Arrêt Perturbé / Station Fermée
+  if (category === 'arret_perturbe' || category === 'fermeture_station') {
+    return L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `
+        <div class="relative flex items-center justify-center cursor-pointer">
+          <span class="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-rose-500 opacity-50"></span>
+          <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-tr from-rose-700 to-rose-500 text-white border-2 border-rose-200 shadow-xl shadow-rose-950 font-bold text-xs">
+            🚫
+          </div>
+          ${badgeHtml}
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+      popupAnchor: [0, -18],
+    });
+  }
+
+  // Icône dédiée Retard Important / Grève
+  if (category === 'greve_retard') {
+    return L.divIcon({
+      className: 'custom-leaflet-marker',
+      html: `
+        <div class="relative flex items-center justify-center cursor-pointer">
+          <div class="relative flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-amber-500 text-white border-2 border-amber-200 shadow-xl shadow-amber-950 font-bold text-xs">
+            ⏱️
+          </div>
+          ${badgeHtml}
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -16],
+    });
+  }
 
   switch (severity) {
     case 'danger':
@@ -315,13 +371,13 @@ export const SecurityMap: React.FC = () => {
             <Marker
               key={incident.id}
               position={[incident.lat, incident.lng]}
-              icon={createIncidentIcon(incident.severity, incident.reports_count)}
+              icon={createIncidentIcon(incident.severity, incident.reports_count, incident.category)}
               eventHandlers={{
                 click: () => setSelectedIncident(incident),
               }}
             >
               <Popup className="pulse-popup">
-                <div className="p-2 min-w-[210px] max-w-[250px] text-slate-100 select-none">
+                <div className="p-2 min-w-[210px] max-w-[260px] text-slate-100 select-none">
                   {/* Ligne 1 : Émoji + Catégorie Principale + Heure Relative */}
                   <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-dark-700/80 mb-2">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -336,11 +392,45 @@ export const SecurityMap: React.FC = () => {
                   </div>
 
                   {/* Ligne 2 : Adresse Courte Épurée */}
-                  <div className="flex items-start gap-1.5 text-slate-200">
+                  <div className="flex items-start gap-1.5 text-slate-200 mb-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                     <span className="text-xs font-semibold leading-tight text-white">
                       {cleanShortAddress(incident.location_name, incident.lat, incident.lng)}
                     </span>
+                  </div>
+
+                  {/* Description si disponible */}
+                  {details.cleanDescription && (
+                    <p className="text-[11px] text-slate-300 leading-snug mb-2 bg-dark-900/60 p-1.5 rounded border border-dark-800">
+                      {details.cleanDescription}
+                    </p>
+                  )}
+
+                  {/* Actions Communautaires (Confirmation / Contestation) */}
+                  <div className="pt-1.5 border-t border-dark-700/60 flex items-center justify-between gap-2 text-[10px] font-mono">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        useIncidentStore.getState().voteIncident(incident.id, 'up');
+                      }}
+                      className="flex-1 py-1 px-1.5 rounded bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/60 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                      title="Confirmer que c'est toujours le cas"
+                    >
+                      <span>👍 Toujours là</span>
+                      <span className="font-bold">({incident.upvotes})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        useIncidentStore.getState().voteIncident(incident.id, 'down');
+                      }}
+                      className="py-1 px-2 rounded bg-dark-800 hover:bg-dark-700 text-slate-300 border border-dark-600 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                      title="Contester / Partis"
+                    >
+                      <span>Partis</span>
+                    </button>
                   </div>
                 </div>
               </Popup>

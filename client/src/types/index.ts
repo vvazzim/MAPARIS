@@ -5,9 +5,32 @@ export type IncidentCategory =
   | 'blocage' 
   | 'tension' 
   | 'fermeture_station' 
+  | 'arret_perturbe'
+  | 'greve_retard'
+  | 'controleurs'
   | 'degradation' 
   | 'calme'
   | 'autre';
+
+export interface PinnedTransitStop {
+  id: string; // unique pin id
+  lineKey: string;
+  stopName: string;
+  stopId: string;
+  direction: string;
+  directionCode?: string;
+  hubId?: string;
+  addedAt: number;
+}
+
+export interface ControllerReportData {
+  stationName: string;
+  lineKey: string;
+  direction?: string;
+  locationDetail: 'turnstiles' | 'platform' | 'train' | 'hall';
+  agentsCount?: string;
+  description?: string;
+}
 
 export interface Incident {
   id: string;

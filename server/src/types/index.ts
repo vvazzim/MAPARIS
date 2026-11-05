@@ -5,6 +5,9 @@ export type IncidentCategory =
   | 'blocage' 
   | 'tension' 
   | 'fermeture_station' 
+  | 'arret_perturbe'
+  | 'greve_retard'
+  | 'controleurs'
   | 'degradation' 
   | 'calme'
   | 'autre';

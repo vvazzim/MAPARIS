@@ -27,9 +27,16 @@ export const IncidentFeed: React.FC = () => {
 
   const [searchFilter, setSearchFilter] = useState('');
   const [severityFilter, setSeverityFilter] = useState<'all' | Severity>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'controleurs' | 'transports'>('all');
 
   const filteredIncidents = incidents.filter((incident) => {
     if (severityFilter !== 'all' && incident.severity !== severityFilter) {
+      return false;
+    }
+    if (categoryFilter === 'controleurs' && incident.category !== 'controleurs') {
+      return false;
+    }
+    if (categoryFilter === 'transports' && incident.category !== 'arret_perturbe' && incident.category !== 'fermeture_station' && incident.category !== 'greve_retard') {
       return false;
     }
     if (searchFilter.trim()) {
@@ -86,6 +93,43 @@ export const IncidentFeed: React.FC = () => {
             className="w-full pl-8 pr-3 py-1.5 bg-dark-950 border border-dark-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-dark-700 transition"
           />
           <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+        </div>
+
+        {/* Filtres par Catégorie Spécialisée */}
+        <div className="flex items-center gap-1 text-[10px] font-mono">
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('all')}
+            className={`px-2 py-0.5 rounded-md transition ${
+              categoryFilter === 'all'
+                ? 'bg-dark-750 text-white font-bold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Tous
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('controleurs')}
+            className={`px-2 py-0.5 rounded-md transition flex items-center gap-1 ${
+              categoryFilter === 'controleurs'
+                ? 'bg-indigo-900 text-indigo-200 font-bold border border-indigo-700'
+                : 'text-indigo-400 hover:text-indigo-200'
+            }`}
+          >
+            <span>👮 Contrôleurs</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter('transports')}
+            className={`px-2 py-0.5 rounded-md transition flex items-center gap-1 ${
+              categoryFilter === 'transports'
+                ? 'bg-rose-950 text-rose-200 font-bold border border-rose-800'
+                : 'text-rose-400 hover:text-rose-200'
+            }`}
+          >
+            <span>🚫 Pannes & Retards</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1 text-[11px]">

@@ -19,6 +19,15 @@ export function getCategoryEmoji(category?: string, severity?: Severity, descrip
   const desc = (description || '').toLowerCase();
 
   // Détection spécifique par mots-clés prioritaires
+  if (category === 'controleurs' || desc.includes('contrôleur') || desc.includes('controleur') || desc.includes('contrôle') || desc.includes('billet')) {
+    return '👮';
+  }
+  if (category === 'arret_perturbe') {
+    return '🚫';
+  }
+  if (category === 'greve_retard' || desc.includes('grève') || desc.includes('greve') || desc.includes('retard')) {
+    return '⏱️';
+  }
   if (desc.includes('lacrymo') || desc.includes('gaz') || desc.includes('teargas')) {
     return '💨';
   }
@@ -147,6 +156,9 @@ export function formatIncidentDetails(incident: Incident, lang: 'fr' | 'en' = 'f
 
   // Catégorie lisible avec émoji
   let categoryLabel = incident.category || 'Événement';
+  if (incident.category === 'controleurs') categoryLabel = lang === 'fr' ? 'Radar Contrôleurs' : 'Ticket Inspectors';
+  if (incident.category === 'arret_perturbe') categoryLabel = lang === 'fr' ? 'Arrêt / Station Perturbé(e)' : 'Station Disrupted';
+  if (incident.category === 'greve_retard') categoryLabel = lang === 'fr' ? 'Retard / Grève' : 'Delay / Strike';
   if (incident.category === 'manifestation') categoryLabel = lang === 'fr' ? 'Cortège / Manif' : 'Protest March';
   if (incident.category === 'tension') categoryLabel = lang === 'fr' ? 'Tension FDO' : 'Police Action';
   if (incident.category === 'degradation') categoryLabel = lang === 'fr' ? 'Dégradations / Feux' : 'Damage / Fires';

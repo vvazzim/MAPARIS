@@ -1,5 +1,6 @@
-import { RealtimeDeparture } from '../types';
+import { RealtimeDeparture, PinnedTransitStop } from '../types';
 import { useState, useEffect } from 'react';
+import { SAMPLE_IDF_DISRUPTIONS, TransitDisruptionItem } from '../data/transitLinesData';
 
 export type TransitLineType = 'metro' | 'rer' | 'train' | 'tram' | 'bus';
 
@@ -903,3 +904,202 @@ export function useRealtimeDepartures(
 
   return { departures, lastUpdated };
 }
+
+// ============================================================================
+// GESTION DES ARRÊTS & LIGNES ÉPINGLÉS (PINNED TRANSPORTS V3)
+// ============================================================================
+const PINNED_STOPS_KEY = 'maparis_pinned_stops_v3';
+
+export const DEFAULT_PINNED_STOPS: PinnedTransitStop[] = [
+  {
+    id: 'pin-m13-porte-clichy-sud',
+    lineKey: 'M13',
+    stopName: 'Porte de Clichy',
+    stopId: 'm13-porte-clichy',
+    direction: 'Châtillon - Montrouge',
+    directionCode: 'SUD',
+    hubId: 'station-porte-de-clichy',
+    addedAt: Date.now(),
+  },
+  {
+    id: 'pin-m14-porte-clichy-orly',
+    lineKey: 'M14',
+    stopName: 'Porte de Clichy',
+    stopId: 'm14-porte-clichy',
+    direction: 'Aéroport d\'Orly',
+    directionCode: 'ORL',
+    hubId: 'station-porte-de-clichy',
+    addedAt: Date.now(),
+  },
+  {
+    id: 'pin-t3b-porte-clichy-vincennes',
+    lineKey: 'T3b',
+    stopName: 'Porte de Clichy',
+    stopId: 't3b-porte-clichy',
+    direction: 'Porte de Vincennes',
+    directionCode: 'VIN',
+    hubId: 'station-porte-de-clichy',
+    addedAt: Date.now(),
+  },
+  {
+    id: 'pin-b54-porte-clichy-nord',
+    lineKey: 'Bus 54',
+    stopName: 'Porte de Clichy',
+    stopId: 'b54-porte-clichy',
+    direction: 'Porte d\'Aubervilliers (via Gare du Nord)',
+    directionCode: 'EST',
+    hubId: 'station-porte-de-clichy',
+    addedAt: Date.now(),
+  },
+  {
+    id: 'pin-b66-porte-clichy-opera',
+    lineKey: 'Bus 66',
+    stopName: 'Porte de Clichy',
+    stopId: 'b66-porte-clichy',
+    direction: 'Opéra (via Gare Saint-Lazare)',
+    directionCode: 'SUD',
+    hubId: 'station-porte-de-clichy',
+    addedAt: Date.now(),
+  },
+];
+
+export function getPinnedStops(): PinnedTransitStop[] {
+  if (typeof window === 'undefined') return DEFAULT_PINNED_STOPS;
+  try {
+    const raw = localStorage.getItem(PINNED_STOPS_KEY);
+    if (!raw) {
+      localStorage.setItem(PINNED_STOPS_KEY, JSON.stringify(DEFAULT_PINNED_STOPS));
+      return DEFAULT_PINNED_STOPS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PINNED_STOPS;
+  } catch (err) {
+    console.warn('[Transit] Erreur lecture arrêts épinglés:', err);
+    return DEFAULT_PINNED_STOPS;
+  }
+}
+
+export function savePinnedStops(stops: PinnedTransitStop[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(PINNED_STOPS_KEY, JSON.stringify(stops));
+  } catch (err) {
+    console.warn('[Transit] Erreur sauvegarde arrêts épinglés:', err);
+  }
+}
+
+export function togglePinStop(stop: PinnedTransitStop): boolean {
+  const current = getPinnedStops();
+  const existsIndex = current.findIndex(
+    (p) => p.lineKey === stop.lineKey && p.stopName.toLowerCase() === stop.stopName.toLowerCase() && p.direction === stop.direction
+  );
+
+  let next: PinnedTransitStop[];
+  let isPinnedNow: boolean;
+
+  if (existsIndex >= 0) {
+    next = current.filter((_, idx) => idx !== existsIndex);
+    isPinnedNow = false;
+  } else {
+    next = [stop, ...current];
+    isPinnedNow = true;
+  }
+
+  savePinnedStops(next);
+  return isPinnedNow;
+}
+
+export function isStopPinned(stopName: string, lineKey: string, direction?: string): boolean {
+  const current = getPinnedStops();
+  return current.some((p) => {
+    const matchesLine = normalizeLineKey(p.lineKey) === normalizeLineKey(lineKey);
+    const matchesName = p.stopName.toLowerCase().trim() === stopName.toLowerCase().trim();
+    if (!direction) return matchesLine && matchesName;
+    return matchesLine && matchesName && p.direction === direction;
+  });
+}
+
+/**
+ * Calcule l'horaire en direct pour un arrêt le long d'une ligne
+ */
+export function getStopRealtimeDeparture(
+  stopId: string,
+  stopOrder: number,
+  _totalStops: number,
+  lineKey: string,
+  directionCode: string,
+  baseDate: Date = getAlignedNow()
+): {
+  remainingMinutes: number;
+  remainingSeconds: number;
+  remainingDisplay: string;
+  followingDisplay: string;
+  departureTime: string;
+  isApproaching: boolean;
+  status: 'on_time' | 'delayed' | 'disrupted';
+} {
+  const normKey = normalizeLineKey(lineKey);
+  const meta = RATP_LINES_METADATA[normKey] || RATP_LINES_METADATA['M13'];
+  const hour = baseDate.getHours();
+  const isWeekend = baseDate.getDay() === 0 || baseDate.getDay() === 6;
+  const headwayMin = getHeadwayMinutes(meta, hour, isWeekend);
+  const headwaySec = Math.max(90, Math.round(headwayMin * 60));
+
+  // Déphasage naturel selon la position de l'arrêt le long du parcours (2 min par arrêt)
+  const linePhaseOffset = (stopOrder * 125) % headwaySec;
+  const seedKey = `${stopId}_${normKey}_${directionCode}`;
+  const pseudoRandom = Math.abs(hashString(seedKey)) % 30;
+
+  const totalCurrentSeconds = Math.floor(baseDate.getTime() / 1000);
+  const cyclePos = (totalCurrentSeconds + linePhaseOffset + pseudoRandom) % headwaySec;
+  const secondsUntilNext = headwaySec - cyclePos;
+
+  const remainingMin = Math.floor(secondsUntilNext / 60);
+  const remainingSecondsPart = secondsUntilNext % 60;
+  const followingMin = remainingMin + Math.round(headwayMin);
+
+  let remainingDisplay: string;
+  const isApproaching = remainingMin === 0;
+
+  if (isApproaching) {
+    if (secondsUntilNext < 30) {
+      remainingDisplay = "À l'approche";
+    } else {
+      remainingDisplay = `${remainingSecondsPart}s`;
+    }
+  } else {
+    remainingDisplay = `${remainingMin} min`;
+  }
+
+  const depDate = new Date(baseDate.getTime() + secondsUntilNext * 1000);
+  const departureTime = `${String(depDate.getHours()).padStart(2, '0')}:${String(depDate.getMinutes()).padStart(2, '0')}`;
+
+  return {
+    remainingMinutes: remainingMin,
+    remainingSeconds: secondsUntilNext,
+    remainingDisplay,
+    followingDisplay: `${followingMin} min`,
+    departureTime,
+    isApproaching,
+    status: 'on_time',
+  };
+}
+
+/**
+ * Récupère les perturbations et alertes réseau en temps réel
+ */
+export async function fetchNetworkDisruptions(): Promise<TransitDisruptionItem[]> {
+  try {
+    const res = await fetch('/api/transit/disruptions');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.disruptions)) {
+        return data.disruptions;
+      }
+    }
+  } catch (err) {
+    console.warn('[Transit] Erreur chargement perturbations API, fallback local:', err);
+  }
+  return SAMPLE_IDF_DISRUPTIONS;
+}
+

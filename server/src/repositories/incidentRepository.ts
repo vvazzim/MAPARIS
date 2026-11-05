@@ -376,9 +376,10 @@ export class IncidentRepository {
     // CAS 2 : Aucun périmètre croisé à >50% -> Création d'un NOUVEAU point
     // =========================================================================
     const now = new Date();
-    // TTL dynamique réactif : 20 min MediaManif, 30 min citoyen (suppression rapide, plus de 120min)
+    // TTL dynamique réactif : 20 min MediaManif, 35 min contrôleurs, 30 min citoyen
     const isMediaManif = data.source && data.source.includes('MediaManif');
-    const defaultTtlSec = isMediaManif ? 1200 : 1800; // 20 min pour MediaManif, 30 min pour citoyen
+    const isControleurs = data.category === 'controleurs';
+    const defaultTtlSec = isMediaManif ? 1200 : (isControleurs ? 2100 : 1800);
     const ttlMs = (data.ttlSeconds !== undefined ? data.ttlSeconds : defaultTtlSec) * 1000;
     const baseExpiry = new Date(now.getTime() + ttlMs);
 

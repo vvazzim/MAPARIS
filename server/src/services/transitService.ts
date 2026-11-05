@@ -853,6 +853,62 @@ export class TransitService {
 
     return departures.sort((a, b) => a.remainingSeconds - b.remainingSeconds);
   }
+
+  /**
+   * Retourne l'état des perturbations réseau, retards et grèves
+   */
+  getNetworkDisruptions() {
+    return [
+      {
+        id: 'disrup-1',
+        lineKey: 'M13',
+        lineLabel: 'Métro 13',
+        type: 'delay',
+        severity: 'warning',
+        title: 'Trafic ralenti suite à incident technique',
+        description: 'Panne d\'aiguillage aux abords de Porte de Clichy. Prévoir 6 à 10 min de retard.',
+        impactedSection: 'Tronçon Nord vers Châtillon - Montrouge',
+        estimatedResolution: 'Intervention des techniciens RATP en cours',
+        updatedAt: 'Il y a 4 min',
+      },
+      {
+        id: 'disrup-2',
+        lineKey: 'RER B',
+        lineLabel: 'RER B',
+        type: 'delay',
+        severity: 'critical',
+        title: 'Interconnexion interrompue à Gare du Nord',
+        description: 'Panne de train voyageur à Châtelet - Les Halles. Rupture de charge obligatoire à Paris Nord.',
+        impactedSection: 'Gare du Nord ↔ Châtelet - Les Halles',
+        estimatedResolution: 'Reprise estimée dans 45 minutes',
+        updatedAt: 'Il y a 6 min',
+      },
+      {
+        id: 'disrup-3',
+        lineKey: 'Train H',
+        lineLabel: 'Train H',
+        type: 'cancellation',
+        severity: 'critical',
+        title: 'Suppressions de trains entre Paris Nord et Persan',
+        description: 'Défaut d\'alimentation caténaire. Plusieurs trains omnibus supprimés ce matin.',
+        impactedSection: 'Paris Gare du Nord ↔ Persan-Beaumont',
+        estimatedResolution: 'Retour progressif à 14h00',
+        updatedAt: 'Il y a 12 min',
+      },
+      {
+        id: 'disrup-4',
+        lineKey: 'RER C',
+        lineLabel: 'RER C',
+        type: 'strike',
+        severity: 'warning',
+        title: 'Préavis de grève SNCF - 1 train sur 2',
+        description: 'Mouvement social national. Prévoir 1 train sur 2 sur la branche Pontoise et les axes Rive Gauche.',
+        impactedSection: 'Ensemble de la ligne C',
+        estimatedResolution: 'Valable toute la journée',
+        updatedAt: 'Il y a 25 min',
+      },
+    ];
+  }
 }
 
 export const transitService = new TransitService();
