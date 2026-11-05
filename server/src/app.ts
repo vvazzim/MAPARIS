@@ -10,6 +10,7 @@ import { incidentRoutes } from './routes/incidents.js';
 import { geocodeRoutes } from './routes/geocode.js';
 import { osintRoutes } from './routes/osint.js';
 import { routingRoutes } from './routes/routing.js';
+import { transitRoutes } from './routes/transit.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -48,6 +49,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(geocodeRoutes);
   await app.register(osintRoutes);
   await app.register(routingRoutes);
+  await app.register(transitRoutes);
 
   // Déploiement unifié : si le build Vite du frontend existe, Fastify le sert directement
   const distCandidates = [

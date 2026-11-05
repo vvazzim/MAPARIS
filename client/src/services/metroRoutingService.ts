@@ -257,8 +257,8 @@ export const TRANSIT_STATIONS: TransitStation[] = [
   {
     id: 'station-porte-de-clichy',
     name: 'Porte de Clichy',
-    lines: ['M13', 'M14', 'RER C', 'T3b'],
-    types: ['metro', 'rer', 'tram'],
+    lines: ['M13', 'M14', 'T3b', 'RER C', 'Bus 54', 'Bus 66', 'Bus 74', 'Bus 173'],
+    types: ['metro', 'rer', 'tram', 'bus'],
     lat: 48.8943,
     lng: 2.3134,
     district: 'Paris 17e',
@@ -911,20 +911,24 @@ export interface PinnedTransportsConfig {
   dailyCommute?: PinnedCommute;
 }
 
-const PINNED_CONFIG_STORAGE_KEY = 'maparis_pinned_transports_v1';
+const PINNED_CONFIG_STORAGE_KEY = 'maparis_pinned_transports_v2';
 
 export function getPinnedTransportsConfig(): PinnedTransportsConfig {
+  const defaultLines = ['M13', 'T3b', 'Bus 54', 'Bus 66', 'Bus 74', 'Bus 173', 'M14', 'RER C'];
   try {
     const saved = localStorage.getItem(PINNED_CONFIG_STORAGE_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      if (parsed && Array.isArray(parsed.pinnedLines) && parsed.pinnedLines.length > 0) {
+        return parsed;
+      }
     }
   } catch (e) {
     // fallback
   }
   return {
     pinnedHubId: 'station-porte-de-clichy',
-    pinnedLines: ['M13', 'T3b', 'Bus 54', 'Bus 66'],
+    pinnedLines: defaultLines,
     dailyCommute: {
       homeStationId: 'station-porte-de-clichy',
       workStationId: 'station-saint-lazare',

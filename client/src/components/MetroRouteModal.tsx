@@ -33,6 +33,8 @@ import {
 import { 
   getLineStyle, 
   getRealtimeDeparturesForStation, 
+  getAlignedNow,
+  normalizeLineKey,
   TransitLineType
 } from '../services/ratpRealtimeService';
 import { RealtimeDeparture } from '../types';
@@ -123,12 +125,13 @@ export const MetroRouteModal: React.FC = () => {
 
   // Basculer l'épinglage d'une ligne
   const togglePinLine = (lineKey: string) => {
-    const isPinned = pinnedConfig.pinnedLines.includes(lineKey);
+    const norm = normalizeLineKey(lineKey);
+    const isPinned = pinnedConfig.pinnedLines.some(l => normalizeLineKey(l) === norm);
     let updated: string[];
     if (isPinned) {
-      updated = pinnedConfig.pinnedLines.filter(l => l !== lineKey);
+      updated = pinnedConfig.pinnedLines.filter(l => normalizeLineKey(l) !== norm);
     } else {
-      updated = [...pinnedConfig.pinnedLines, lineKey];
+      updated = [...pinnedConfig.pinnedLines, norm];
     }
     updatePinnedConfig({
       ...pinnedConfig,
@@ -175,10 +178,11 @@ export const MetroRouteModal: React.FC = () => {
   // Recalcul du trajet et des passages en temps réel
   useEffect(() => {
     if (!isMetroRouteModalOpen) return;
+    const serverNow = getAlignedNow();
 
     // 1. Calcul du trajet ponctuel
     if (originStation && destStation) {
-      const plan = calculateMetroRoute(originStation.id, destStation.id, new Date());
+      const plan = calculateMetroRoute(originStation.id, destStation.id, serverNow);
       setRoutePlan(plan);
       if (plan) {
         setSecondsRemaining(plan.countdownSeconds);
@@ -191,7 +195,7 @@ export const MetroRouteModal: React.FC = () => {
         originStation.id,
         originStation.lines,
         'normal',
-        new Date(),
+        serverNow,
         activeMode
       );
       setLiveDepartures(deps.slice(0, 8));
@@ -203,14 +207,14 @@ export const MetroRouteModal: React.FC = () => {
         pinnedHubStation.id,
         pinnedHubStation.lines,
         'normal',
-        new Date(),
+        serverNow,
         'all'
       );
-      // Filtrer prioritairement les lignes épinglées (M13, T3b, Bus, etc.)
+      // Filtrer prioritairement les lignes épinglées (M13, T3b, Bus 54, Bus 66, etc.)
       const filteredByPinnedLines = allHubDeps.filter(d => 
-        pinnedConfig.pinnedLines.includes(d.line)
+        pinnedConfig.pinnedLines.some(p => normalizeLineKey(p) === normalizeLineKey(d.line))
       );
-      setPinnedLiveDepartures(filteredByPinnedLines.length > 0 ? filteredByPinnedLines : allHubDeps.slice(0, 6));
+      setPinnedLiveDepartures(filteredByPinnedLines.length > 0 ? filteredByPinnedLines : allHubDeps.slice(0, 8));
     }
   }, [originStation, destStation, isMetroRouteModalOpen, activeMode, pinnedHubStation, pinnedConfig.pinnedLines]);
 
@@ -219,10 +223,12 @@ export const MetroRouteModal: React.FC = () => {
     if (!isMetroRouteModalOpen) return;
 
     const interval = setInterval(() => {
+      const serverNow = getAlignedNow();
+
       // Décompte ponctuel
       setSecondsRemaining((prev) => {
         if (prev <= 1) {
-          const refreshed = calculateMetroRoute(originStation.id, destStation.id, new Date());
+          const refreshed = calculateMetroRoute(originStation.id, destStation.id, serverNow);
           setRoutePlan(refreshed);
           return refreshed ? refreshed.countdownSeconds : 180;
         }
@@ -235,7 +241,7 @@ export const MetroRouteModal: React.FC = () => {
           originStation.id,
           originStation.lines,
           'normal',
-          new Date(),
+          serverNow,
           activeMode
         );
         setLiveDepartures(updatedDeps.slice(0, 8));
@@ -247,11 +253,13 @@ export const MetroRouteModal: React.FC = () => {
           pinnedHubStation.id,
           pinnedHubStation.lines,
           'normal',
-          new Date(),
+          serverNow,
           'all'
         );
-        const filtered = allHubDeps.filter(d => pinnedConfig.pinnedLines.includes(d.line));
-        setPinnedLiveDepartures(filtered.length > 0 ? filtered : allHubDeps.slice(0, 6));
+        const filtered = allHubDeps.filter(d => 
+          pinnedConfig.pinnedLines.some(p => normalizeLineKey(p) === normalizeLineKey(d.line))
+        );
+        setPinnedLiveDepartures(filtered.length > 0 ? filtered : allHubDeps.slice(0, 8));
       }
     }, 1000);
 
@@ -516,7 +524,7 @@ export const MetroRouteModal: React.FC = () => {
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {pinnedHubStation.lines.map((lineKey) => {
-                      const isPinned = pinnedConfig.pinnedLines.includes(lineKey);
+                      const isPinned = pinnedConfig.pinnedLines.some(p => normalizeLineKey(p) === normalizeLineKey(lineKey));
                       const style = getLineStyle(lineKey);
 
                       return (
@@ -525,18 +533,21 @@ export const MetroRouteModal: React.FC = () => {
                           type="button"
                           onClick={() => togglePinLine(lineKey)}
                           style={{
-                            backgroundColor: isPinned ? style.bg : '#1e293b',
-                            color: isPinned ? style.text : '#94a3b8',
-                            borderColor: isPinned ? style.bg : '#334155',
+                            backgroundColor: isPinned ? style.bg : `${style.bg}22`,
+                            color: isPinned ? style.text : '#f8fafc',
+                            borderColor: style.bg,
                           }}
-                          className="px-2 py-1 rounded-lg text-xs font-mono font-bold border transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 ${
+                            isPinned ? 'ring-2 ring-amber-400/50 shadow-md scale-105' : 'opacity-90 hover:opacity-100 hover:scale-102'
+                          }`}
                           title={isPinned ? 'Ligne épinglée (cliquez pour retirer)' : 'Cliquez pour surveiller cette ligne'}
                         >
-                          <span>{style.label}</span>
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isPinned ? style.text : style.bg }} />
+                          <span>{style.fullName}</span>
                           {isPinned ? (
-                            <Pin className="w-3 h-3 fill-current" />
+                            <Pin className="w-3 h-3 fill-amber-400 text-amber-400 ml-0.5" />
                           ) : (
-                            <span className="text-[10px] opacity-60">+</span>
+                            <span className="text-[10px] opacity-70 ml-0.5">+</span>
                           )}
                         </button>
                       );
@@ -565,7 +576,7 @@ export const MetroRouteModal: React.FC = () => {
                         return (
                           <span
                             style={{ backgroundColor: style.bg, color: style.text }}
-                            className="w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs font-mono shrink-0 shadow-sm"
+                            className="min-w-[28px] h-7 px-1.5 rounded-xl flex items-center justify-center font-extrabold text-xs font-mono shrink-0 shadow-sm"
                           >
                             {style.label}
                           </span>
@@ -573,7 +584,7 @@ export const MetroRouteModal: React.FC = () => {
                       })()}
                       <div className="min-w-0">
                         <span className="text-xs font-extrabold text-white block truncate">
-                          Ligne {fastestPinnedDeparture.line} ➔ {fastestPinnedDeparture.destination}
+                          {getLineStyle(fastestPinnedDeparture.line).fullName} ➔ {fastestPinnedDeparture.destination}
                         </span>
                         <span className="text-[11px] text-slate-300 block">
                           Passe en premier à quai
@@ -621,7 +632,7 @@ export const MetroRouteModal: React.FC = () => {
                         <div className="flex items-center gap-2 min-w-0">
                           <span
                             style={{ backgroundColor: style.bg, color: style.text }}
-                            className="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs font-mono shrink-0 shadow-sm"
+                            className="min-w-[24px] h-6 px-1 rounded-md flex items-center justify-center font-bold text-[11px] font-mono shrink-0 shadow-sm"
                           >
                             {style.label}
                           </span>

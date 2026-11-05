@@ -402,7 +402,7 @@ export const SecurityMap: React.FC = () => {
                               <div className="flex items-center gap-1.5 min-w-0 pr-1">
                                 <span
                                   style={{ backgroundColor: style.bg, color: style.text }}
-                                  className="w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] font-mono shrink-0"
+                                  className="min-w-[18px] h-4 px-1 rounded-sm flex items-center justify-center font-bold text-[9px] font-mono shrink-0"
                                 >
                                   {style.label}
                                 </span>

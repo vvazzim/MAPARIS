@@ -10,6 +10,9 @@ export function setupSocketIO(io: Server) {
   io.on('connection', async (socket: Socket) => {
     console.log(`[Socket.IO] Client connecté: ${socket.id}`);
 
+    // Synchronisation d'horloge serveur immédiate
+    socket.emit('server:time', { serverTime: Date.now() });
+
     try {
       // Envoi du flux initial des incidents au client qui vient de se connecter
       const activeIncidents = await incidentRepository.getAll({ limit: 50 });
@@ -18,7 +21,7 @@ export function setupSocketIO(io: Server) {
       console.error('[Socket.IO] Erreur envoi incidents initiaux:', err.message);
     }
 
-    // Ping / Pong pour monitoring de latence
+    // Ping / Pong pour monitoring de latence & resynchronisation d'horloge
     socket.on('client:ping', () => {
       socket.emit('server:pong', { timestamp: Date.now() });
     });

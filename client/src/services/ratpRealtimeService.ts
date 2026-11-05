@@ -618,14 +618,98 @@ function hashString(str: string): number {
   return Math.abs(hash);
 }
 
+// =========================================================================
+// ALIGNEMENT TEMPOREL PARFAIT CLIENT <-> SERVEUR
+// =========================================================================
+let serverClockOffsetMs = 0;
+
+/**
+ * Synchronise l'horloge locale avec l'horloge de référence du serveur
+ */
+export function syncServerTime(serverEpochMs: number) {
+  if (typeof serverEpochMs === 'number' && !isNaN(serverEpochMs) && serverEpochMs > 0) {
+    serverClockOffsetMs = serverEpochMs - Date.now();
+  }
+}
+
+/**
+ * Retourne la date exacte actuelle alignée sur le serveur à la milliseconde
+ */
+export function getAlignedNow(): Date {
+  return new Date(Date.now() + serverClockOffsetMs);
+}
+
+// Appel initial asynchrone non-bloquant de synchronisation
+if (typeof window !== 'undefined') {
+  fetch('/api/transit/time')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (data && data.serverTime) {
+        syncServerTime(data.serverTime);
+      }
+    })
+    .catch(() => {});
+}
+
+/**
+ * Normalise n'importe quel identifiant de ligne vers la clé officielle
+ * Supporte : '13' -> 'M13', '54' -> 'Bus 54', 'C' -> 'RER C', 't3b' -> 'T3b', etc.
+ */
+export function normalizeLineKey(raw: string): string {
+  if (!raw) return 'M1';
+  const clean = raw.trim();
+
+  // Si la clé existe déjà dans le dictionnaire
+  if (RATP_LINES_METADATA[clean]) return clean;
+
+  const upper = clean.toUpperCase();
+
+  // Métros 1 à 14
+  const numMatch = upper.match(/^(?:M|METRO|MÉTRO|L)?\s*([1-9]|1[0-4])$/i);
+  if (numMatch) {
+    const k = `M${numMatch[1]}`;
+    if (RATP_LINES_METADATA[k]) return k;
+  }
+
+  // RER A à E
+  const rerMatch = upper.match(/^(?:RER\s*)?([A-E])$/i);
+  if (rerMatch) {
+    const k = `RER ${rerMatch[1].toUpperCase()}`;
+    if (RATP_LINES_METADATA[k]) return k;
+  }
+
+  // Tramway T1, T2, T3a, T3b, T7, T8, T9, T11
+  const tramMatch = upper.match(/^(?:TRAM\s*|T\s*)?(\d+[A-Z]?)$/i);
+  if (tramMatch) {
+    const tramNum = tramMatch[1];
+    const formatted = `T${tramNum.toLowerCase()}`;
+    const formattedT = `T${tramNum.charAt(0).toUpperCase()}${tramNum.slice(1).toLowerCase()}`;
+    if (RATP_LINES_METADATA[formattedT]) return formattedT;
+    if (RATP_LINES_METADATA[formatted]) return formatted;
+  }
+
+  // Transilien H, J, K, L, N, P, R, U
+  const trainMatch = upper.match(/^(?:TRAIN\s*|LIGNE\s*)?([HJKLNRPU])$/i);
+  if (trainMatch) {
+    const k = `Train ${trainMatch[1].toUpperCase()}`;
+    if (RATP_LINES_METADATA[k]) return k;
+  }
+
+  // Bus avec numéro (ex: '54', 'Bus 54', '66', '173')
+  const busMatch = upper.match(/^(?:BUS\s*|B\s*)?(\d{2,3})$/i);
+  if (busMatch) {
+    const k = `Bus ${busMatch[1]}`;
+    if (RATP_LINES_METADATA[k]) return k;
+  }
+
+  return clean;
+}
+
 /**
  * Détermine l'intervalle moyen (headway) selon l'heure de la journée à Paris
  */
 function getHeadwayMinutes(lineMeta: LineMetadata, hour: number, isWeekend: boolean): number {
-  // Période de pointe semaine (07h30-09h30 & 16h30-19h30)
   const isPeak = !isWeekend && ((hour >= 7 && hour < 10) || (hour >= 16 && hour < 20));
-  
-  // Soirée (21h30 - 01h30)
   const isEvening = hour >= 21 || hour < 2;
 
   if (isPeak) {
@@ -639,12 +723,13 @@ function getHeadwayMinutes(lineMeta: LineMetadata, hour: number, isWeekend: bool
 
 /**
  * Calcule les prochains passages en temps réel pour une station et ses lignes
+ * Aligné 100% avec l'horloge du serveur
  */
 export function getRealtimeDeparturesForStation(
   stationId: string,
   lines: string[],
   stationStatus: 'normal' | 'disrupted' | 'closed' = 'normal',
-  currentTime: Date = new Date(),
+  currentTime: Date = getAlignedNow(),
   filterMode: 'all' | 'metro' | 'rer' | 'train' | 'tram' | 'bus' = 'all'
 ): RealtimeDeparture[] {
   const departures: RealtimeDeparture[] = [];
@@ -654,15 +739,16 @@ export function getRealtimeDeparturesForStation(
   const day = currentTime.getDay();
   const isWeekend = day === 0 || day === 6;
 
-  // Créneau de nuit métro (fermeture de 01h15 à 05h30 en semaine, 02h15 le week-end)
   const nightCloseHour = isWeekend ? 2 : 1;
   const isNightClosed = (hour > nightCloseHour || (hour === nightCloseHour && minutes >= 15)) && hour < 5;
 
-  lines.forEach((lineKey) => {
+  // Normaliser et dédoublonner les clés de ligne
+  const uniqueLines = Array.from(new Set(lines.map(normalizeLineKey)));
+
+  uniqueLines.forEach((lineKey) => {
     const meta = RATP_LINES_METADATA[lineKey];
     if (!meta) return;
 
-    // Filtre par catégorie si demandé
     if (filterMode !== 'all') {
       if (filterMode === 'metro' && meta.type !== 'metro') return;
       if (filterMode === 'rer' && meta.type !== 'rer' && meta.type !== 'train') return;
@@ -672,7 +758,6 @@ export function getRealtimeDeparturesForStation(
     }
 
     meta.directions.forEach((dir) => {
-      // Si la station est fermée
       if (stationStatus === 'closed') {
         departures.push({
           line: lineKey,
@@ -686,7 +771,6 @@ export function getRealtimeDeparturesForStation(
         return;
       }
 
-      // Si le métro/train est fermé la nuit (sauf Noctilien)
       if (isNightClosed && meta.type !== 'bus') {
         departures.push({
           line: lineKey,
@@ -700,20 +784,16 @@ export function getRealtimeDeparturesForStation(
         return;
       }
 
-      // Calcul du cycle en secondes pour cette ligne et direction
       const headwayMin = getHeadwayMinutes(meta, hour, isWeekend);
       const headwaySec = Math.max(90, Math.round(headwayMin * 60));
 
-      // Déphasage unique et stable par (station + ligne + terminus)
       const seedKey = `${stationId}_${lineKey}_${dir.code}`;
       const phaseOffset = hashString(seedKey) % headwaySec;
 
-      // Seconde actuelle dans l'époque unix pour assurer une continuité temporelle réelle
       const totalCurrentSeconds = Math.floor(currentTime.getTime() / 1000);
       const cyclePos = (totalCurrentSeconds + phaseOffset) % headwaySec;
       const secondsUntilNext = headwaySec - cyclePos;
 
-      // Perturbation éventuelle (+3 à 6 min de retard)
       const isDisrupted = stationStatus === 'disrupted';
       const delaySec = isDisrupted ? (hashString(seedKey + '_delay') % 240) + 120 : 0;
       const effectiveSec = secondsUntilNext + delaySec;
@@ -745,23 +825,52 @@ export function getRealtimeDeparturesForStation(
     });
   });
 
-  // Tri par départ le plus proche
   return departures.sort((a, b) => a.remainingMinutes - b.remainingMinutes);
 }
 
 /**
- * Récupère le style graphique officiel d'une ligne
+ * Récupère le style graphique officiel complet d'une ligne (couleur, contraste, libellé)
+ * avec fallback éclatant (JAMAIS gris terne)
  */
-export function getLineStyle(lineKey: string): { bg: string; text: string; label: string; type: TransitLineType } {
-  const meta = RATP_LINES_METADATA[lineKey];
-  if (!meta) {
-    return { bg: '#334155', text: '#FFFFFF', label: lineKey, type: 'metro' };
+export function getLineStyle(rawLine: string): { 
+  bg: string; 
+  text: string; 
+  label: string; 
+  fullName: string;
+  type: TransitLineType 
+} {
+  const normalizedKey = normalizeLineKey(rawLine);
+  const meta = RATP_LINES_METADATA[normalizedKey] || RATP_LINES_METADATA[rawLine];
+
+  if (meta) {
+    const fullName = meta.type === 'metro' ? `M${meta.name}` : meta.type === 'bus' ? `Bus ${meta.name}` : meta.name;
+    return {
+      bg: meta.bg,
+      text: meta.text,
+      label: meta.name,
+      fullName,
+      type: meta.type,
+    };
   }
+
+  // Fallback bus dynamique (ex: Bus 163, Bus 28, Bus 341)
+  if (/^\d{2,3}$/.test(rawLine) || rawLine.toLowerCase().startsWith('bus')) {
+    const num = rawLine.replace(/\D/g, '');
+    return {
+      bg: '#83286B', // Magenta bus officiel
+      text: '#FFFFFF',
+      label: num || rawLine,
+      fullName: `Bus ${num || rawLine}`,
+      type: 'bus',
+    };
+  }
+
   return {
-    bg: meta.bg,
-    text: meta.text,
-    label: meta.name,
-    type: meta.type,
+    bg: '#0065A2', // Bleu IDFM
+    text: '#FFFFFF',
+    label: rawLine,
+    fullName: rawLine,
+    type: 'metro',
   };
 }
 

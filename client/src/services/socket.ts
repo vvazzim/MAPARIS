@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { syncServerTime } from './ratpRealtimeService';
 
 // Utilise le même domaine ou fallback sur le port local 4000
 const metaEnv = (import.meta as any).env;
@@ -29,6 +30,15 @@ export const initSocketListeners = (
   socket.on('connect', () => {
     console.log('[Socket.IO] Connecté au serveur MaParis:', socket.id);
     onStatusChange('connected');
+    socket.emit('client:ping');
+  });
+
+  socket.on('server:time', ({ serverTime }: { serverTime: number }) => {
+    if (serverTime) syncServerTime(serverTime);
+  });
+
+  socket.on('server:pong', ({ timestamp }: { timestamp: number }) => {
+    if (timestamp) syncServerTime(timestamp);
   });
 
   socket.on('disconnect', (reason) => {

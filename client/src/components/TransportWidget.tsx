@@ -52,7 +52,7 @@ const StationDepartureBoard: React.FC<{ station: MetroStationStatus }> = ({ stat
                 {/* Badge officiel de la ligne */}
                 <span
                   style={{ backgroundColor: style.bg, color: style.text }}
-                  className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] font-mono shrink-0 shadow-sm"
+                  className="min-w-[22px] h-5 px-1 rounded-md flex items-center justify-center font-bold text-[10px] font-mono shrink-0 shadow-sm"
                 >
                   {style.label}
                 </span>

@@ -1,4 +1,5 @@
 import { Incident, Severity } from '../types';
+import { getAlignedNow } from '../services/ratpRealtimeService';
 
 export interface FormattedIncidentDetails {
   emoji: string;
@@ -105,7 +106,8 @@ export function translateDescription(text: string, lang: 'fr' | 'en'): string {
  * Calcule un libellé de temps écoulé lisible (ex: "Il y a 5 min")
  */
 export function formatTimeAgo(dateString: string, lang: 'fr' | 'en'): string {
-  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(dateString).getTime()) / 1000));
+  const nowMs = getAlignedNow().getTime();
+  const diffSec = Math.max(0, Math.floor((nowMs - new Date(dateString).getTime()) / 1000));
   
   if (diffSec < 60) {
     return lang === 'fr' ? "À l'instant" : 'Just now';
