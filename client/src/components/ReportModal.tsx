@@ -45,7 +45,7 @@ const POPULAR_TRANSIT_STATIONS = [
 ];
 
 export const ReportModal: React.FC = () => {
-  const { isReportModalOpen, closeReportModal, addIncident, t } = useIncidentStore();
+  const { isReportModalOpen, closeReportModal, addIncident, reportModalPrefill, t } = useIncidentStore();
 
   const [activeMode, setActiveMode] = useState<ReportMode>('controleurs');
 
@@ -83,9 +83,35 @@ export const ReportModal: React.FC = () => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Synchronisation avec les données pré-remplies si ouverture depuis un arrêt
+  useEffect(() => {
+    if (isReportModalOpen && reportModalPrefill) {
+      if (reportModalPrefill.category) {
+        if (reportModalPrefill.category === 'controleurs') setActiveMode('controleurs');
+        else if (reportModalPrefill.category === 'arret_perturbe' || reportModalPrefill.category === 'fermeture_station') setActiveMode('arret_perturbe');
+        else if (reportModalPrefill.category === 'greve_retard') setActiveMode('greve_retard');
+        else setActiveMode('securite');
+      }
+      if (reportModalPrefill.address) {
+        setAddressQuery(reportModalPrefill.address);
+        setSelectedLocation({
+          label: reportModalPrefill.address,
+          lat: reportModalPrefill.lat || 48.8944,
+          lng: reportModalPrefill.lng || 2.3134,
+          score: 1,
+        });
+      }
+      if (reportModalPrefill.line) {
+        setControllerLine(reportModalPrefill.line);
+        setDisruptedLine(reportModalPrefill.line);
+        setDelayedLine(reportModalPrefill.line);
+      }
+    }
+  }, [isReportModalOpen, reportModalPrefill]);
+
   // Pré-remplir l'adresse par défaut si vide (Porte de Clichy)
   useEffect(() => {
-    if (!addressQuery && activeMode !== 'securite') {
+    if (!addressQuery && activeMode !== 'securite' && !reportModalPrefill) {
       const defaultHub = POPULAR_TRANSIT_STATIONS[0];
       setAddressQuery(defaultHub.name);
       setSelectedLocation({
@@ -95,7 +121,7 @@ export const ReportModal: React.FC = () => {
         score: 1,
       });
     }
-  }, [activeMode, addressQuery]);
+  }, [activeMode, addressQuery, reportModalPrefill]);
 
   // Debounced search for Base Adresse Nationale
   useEffect(() => {

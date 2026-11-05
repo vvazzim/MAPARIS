@@ -89,7 +89,7 @@ export const MobileBottomNav: React.FC = () => {
         <div className="relative -top-2 flex items-center justify-center px-1">
           <button
             type="button"
-            onClick={openReportModal}
+            onClick={() => openReportModal()}
             className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-tr from-rose-600 via-rose-500 to-amber-500 text-white shadow-lg shadow-rose-950/80 border-2 border-dark-900 transition-all duration-150 active:scale-90 hover:scale-105 cursor-pointer"
             aria-label="Signaler un incident en direct"
           >

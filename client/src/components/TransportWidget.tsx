@@ -253,12 +253,16 @@ export const TransportWidget: React.FC = () => {
                 return (
                   <div
                     key={pin.id}
-                    className="p-1.5 rounded-lg bg-dark-900 border border-dark-800 flex items-center justify-between text-xs"
+                    onClick={() => {
+                      toggleTransportWidget();
+                      openMetroRouteModal();
+                    }}
+                    className="p-1.5 rounded-lg bg-dark-900 border border-dark-800 hover:border-dark-700 transition flex items-center justify-between text-xs cursor-pointer"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span
                         style={{ backgroundColor: style.bg, color: style.text }}
-                        className="min-w-[22px] h-5 px-1 rounded flex items-center justify-center font-bold text-[10px] font-mono shrink-0"
+                        className="min-w-[22px] h-5 px-1 rounded flex items-center justify-center font-bold text-[10px] font-mono shrink-0 shadow-sm"
                       >
                         {style.label}
                       </span>
@@ -268,9 +272,14 @@ export const TransportWidget: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-800/80 shrink-0">
-                      {dep.remainingDisplay}
-                    </span>
+                    <div className="text-right shrink-0">
+                      <span className="px-1.5 py-0.5 rounded font-mono font-bold text-[10px] tabular-nums bg-indigo-950 text-indigo-300 border border-indigo-800/80">
+                        {dep.remainingDisplay} ({dep.departureTime})
+                      </span>
+                      <div className="text-[8px] font-mono text-slate-500 mt-0.5">
+                        Suiv. {dep.followingDepartureTime}
+                      </div>
+                    </div>
                   </div>
                 );
               })}

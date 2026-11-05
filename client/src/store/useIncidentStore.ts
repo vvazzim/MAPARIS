@@ -1,8 +1,16 @@
 import { create } from 'zustand';
-import { Incident, FilterOptions, SafeRouteResult } from '../types';
+import { Incident, FilterOptions, SafeRouteResult, IncidentCategory } from '../types';
 import { safeFetchJson } from '../services/api';
 import { detectDefaultLanguage, Language, translations } from '../i18n/translations';
 import { MetroRoutePlan } from '../services/metroRoutingService';
+
+export interface ReportModalPrefill {
+  category?: IncidentCategory;
+  address?: string;
+  line?: string;
+  lat?: number;
+  lng?: number;
+}
 
 interface IncidentState {
   incidents: Incident[];
@@ -19,6 +27,7 @@ interface IncidentState {
 
   // Modals & Drawers
   isReportModalOpen: boolean;
+  reportModalPrefill: ReportModalPrefill | null;
   isSafeRouteModalOpen: boolean;
   isMetroRouteModalOpen: boolean;
   metroRouteOrigin: string | null;
@@ -58,7 +67,7 @@ interface IncidentState {
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
   setMobileActiveTab: (tab: 'map' | 'feed') => void;
-  openReportModal: () => void;
+  openReportModal: (prefill?: ReportModalPrefill) => void;
   closeReportModal: () => void;
   openSafeRouteModal: () => void;
   closeSafeRouteModal: () => void;
@@ -94,6 +103,7 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
       set({ language: next, t: translations[next] });
     },
     isReportModalOpen: false,
+    reportModalPrefill: null,
     isSafeRouteModalOpen: false,
     isMetroRouteModalOpen: false,
     metroRouteOrigin: null,
@@ -166,8 +176,8 @@ export const useIncidentStore = create<IncidentState>((set, get) => {
   closeMobileMenu: () => set({ isMobileMenuOpen: false }),
   setMobileActiveTab: (mobileActiveTab) => set({ mobileActiveTab }),
 
-  openReportModal: () => set({ isReportModalOpen: true, isMobileMenuOpen: false }),
-  closeReportModal: () => set({ isReportModalOpen: false }),
+  openReportModal: (prefill) => set({ isReportModalOpen: true, isMobileMenuOpen: false, reportModalPrefill: prefill || null }),
+  closeReportModal: () => set({ isReportModalOpen: false, reportModalPrefill: null }),
 
   openSafeRouteModal: () => set({ isSafeRouteModalOpen: true, isMobileMenuOpen: false }),
   closeSafeRouteModal: () => set({ isSafeRouteModalOpen: false }),

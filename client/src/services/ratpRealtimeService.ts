@@ -1035,6 +1035,7 @@ export function getStopRealtimeDeparture(
   remainingDisplay: string;
   followingDisplay: string;
   departureTime: string;
+  followingDepartureTime: string;
   isApproaching: boolean;
   status: 'on_time' | 'delayed' | 'disrupted';
 } {
@@ -1073,6 +1074,8 @@ export function getStopRealtimeDeparture(
 
   const depDate = new Date(baseDate.getTime() + secondsUntilNext * 1000);
   const departureTime = `${String(depDate.getHours()).padStart(2, '0')}:${String(depDate.getMinutes()).padStart(2, '0')}`;
+  const followingDate = new Date(baseDate.getTime() + (secondsUntilNext + headwayMin * 60) * 1000);
+  const followingDepartureTime = `${String(followingDate.getHours()).padStart(2, '0')}:${String(followingDate.getMinutes()).padStart(2, '0')}`;
 
   return {
     remainingMinutes: remainingMin,
@@ -1080,6 +1083,7 @@ export function getStopRealtimeDeparture(
     remainingDisplay,
     followingDisplay: `${followingMin} min`,
     departureTime,
+    followingDepartureTime,
     isApproaching,
     status: 'on_time',
   };
