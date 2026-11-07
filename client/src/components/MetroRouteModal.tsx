@@ -69,15 +69,29 @@ export const MetroRouteModal: React.FC = () => {
 
   // Trajet ponctuel A ➔ B
   const originStation = useMemo<TransitStation>(() => 
-    TRANSIT_STATIONS.find(s => s.id === (metroRouteOrigin || 'station-porte-de-clichy')) || TRANSIT_STATIONS[0],
+    TRANSIT_STATIONS.find(s => s.id === (metroRouteOrigin || 'station-porte-de-clichy')) || TRANSIT_STATIONS[0] || {
+      id: 'station-porte-de-clichy',
+      name: 'Porte de Clichy',
+      lines: ['M13', 'M14', 'RER C', 'T3b'],
+      types: ['metro', 'rer', 'tram'],
+      lat: 48.8944,
+      lng: 2.3134,
+    },
     [metroRouteOrigin]
   );
   const destStation = useMemo<TransitStation>(() => 
-    TRANSIT_STATIONS.find(s => s.id === (metroRouteDestination || 'station-saint-lazare')) || TRANSIT_STATIONS[1],
+    TRANSIT_STATIONS.find(s => s.id === (metroRouteDestination || 'station-saint-lazare')) || TRANSIT_STATIONS[1] || {
+      id: 'station-saint-lazare',
+      name: 'Saint-Lazare',
+      lines: ['M3', 'M9', 'M12', 'M13', 'M14', 'RER E'],
+      types: ['metro', 'rer'],
+      lat: 48.8756,
+      lng: 2.3258,
+    },
     [metroRouteDestination]
   );
-  const [originSearch, setOriginSearch] = useState<string>(() => originStation.name);
-  const [destSearch, setDestSearch] = useState<string>(() => destStation.name);
+  const [originSearch, setOriginSearch] = useState<string>(() => originStation?.name || 'Porte de Clichy');
+  const [destSearch, setDestSearch] = useState<string>(() => destStation?.name || 'Saint-Lazare');
   const [routePlan, setRoutePlan] = useState<MetroRoutePlan | null>(null);
 
   // Horloge réactive pour ticker à la seconde
@@ -111,8 +125,8 @@ export const MetroRouteModal: React.FC = () => {
 
   // Ligne active dans l'explorateur
   const activeLineData = IDF_LINES_DIRECTORY[normalizeLineKey(selectedLineKey)] || IDF_LINES_DIRECTORY['M13'];
-  const activeLineStyle = getLineStyle(activeLineData.key);
-  const activeDirection = activeLineData.directions[directionIndex] || activeLineData.directions[0];
+  const activeLineStyle = getLineStyle(activeLineData?.key || 'M13');
+  const activeDirection = activeLineData?.directions?.[directionIndex] || activeLineData?.directions?.[0] || { destination: 'Terminus', code: 'DIR' };
 
   // Liste ordonnée des arrêts selon le sens de circulation
   const displayedStops = useMemo(() => {

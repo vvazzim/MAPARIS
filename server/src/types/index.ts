@@ -30,6 +30,7 @@ export interface Incident {
   created_at: string;
   updated_at?: string;
   resolved?: boolean;
+  duration?: '2h' | '12h' | '2d';
 }
 
 export interface CreateIncidentDTO {
@@ -40,6 +41,7 @@ export interface CreateIncidentDTO {
   category?: IncidentCategory;
   lat?: number;
   lng?: number;
+  duration?: '2h' | '12h' | '2d';
 }
 
 export interface GeocodeResult {

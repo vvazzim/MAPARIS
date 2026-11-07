@@ -17,11 +17,15 @@ import {
   Globe,
   ChevronRight,
   ChevronDown,
-  Shield
+  Shield,
+  Map as MapIcon,
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { ParisLogo } from './ParisLogo';
+import { getLineStyle } from '../services/ratpRealtimeService';
 
 export const MobileDrawer: React.FC = () => {
   const {
@@ -32,8 +36,6 @@ export const MobileDrawer: React.FC = () => {
     openReportModal,
     openSafeRouteModal,
     openMetroRouteModal,
-    showTransportWidget,
-    toggleTransportWidget,
     toggleDangerRadius,
     toggleTransports,
     showDangerRadius,
@@ -46,6 +48,7 @@ export const MobileDrawer: React.FC = () => {
   } = useIncidentStore();
 
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [hubSearch, setHubSearch] = useState('');
 
   if (!isMobileMenuOpen) return null;
 
@@ -53,6 +56,22 @@ export const MobileDrawer: React.FC = () => {
   const warningCount = incidents.filter((i) => i.severity === 'warning').length;
   const safeCount = incidents.filter((i) => i.severity === 'safe').length;
   const disruptedStations = PARIS_TRANSPORT_HUBS.filter((s) => s.status !== 'normal').length;
+
+  const filteredHubs = PARIS_TRANSPORT_HUBS.filter((h) => {
+    if (!hubSearch.trim()) return true;
+    const q = hubSearch.toLowerCase().trim();
+    return h.name.toLowerCase().includes(q) || h.lines.some((l) => l.toLowerCase().includes(q));
+  });
+
+  const handleReturnToMap = () => {
+    setMobileActiveTab('map');
+    closeMobileMenu();
+  };
+
+  const handleOpenWidgetBuilder = () => {
+    closeMobileMenu();
+    window.dispatchEvent(new CustomEvent('maparis:open-widget-builder'));
+  };
 
   return (
     <div className="fixed inset-0 z-[1000] animate-in fade-in duration-200">
@@ -64,26 +83,27 @@ export const MobileDrawer: React.FC = () => {
       />
 
       {/* Slide-over panel (Mobile & Desktop) */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-8 sm:pl-10">
-        <div className="w-screen max-w-sm sm:max-w-md bg-dark-900 border-l border-dark-800 shadow-2xl flex flex-col justify-between overflow-y-auto">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+        <div className="w-screen max-w-sm sm:max-w-md bg-dark-900 border-l border-dark-800 shadow-2xl flex flex-col justify-between overflow-hidden">
           
-          {/* Header du Menu Unique avec Safe Area pour éviter l'encoche / barre de statut */}
+          {/* ========================================================= */}
+          {/* HEADER DU MENU                                            */}
+          {/* ========================================================= */}
           <div 
             style={{ paddingTop: 'max(1.25rem, calc(0.75rem + env(safe-area-inset-top, 0px)))' }}
-            className="p-4 sm:p-5 border-b border-dark-800 flex items-center justify-between bg-dark-950/80 shrink-0"
+            className="p-4 sm:p-5 border-b border-dark-800 flex items-center justify-between bg-dark-950/90 shrink-0"
           >
             <div className="flex items-center space-x-2.5 sm:space-x-3">
               <ParisLogo className="w-8 h-8" showAlertDot={dangerCount > 0 || warningCount > 0} />
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-extrabold text-white text-base">MAParis</h3>
-                  {/* Indicateur Live OSINT en VERT */}
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-700/60 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Live OSINT</span>
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400 font-mono">{t.mobile.menuTitle}</p>
+                <p className="text-[11px] text-slate-400 font-mono">Menu Général & Mobilité</p>
               </div>
             </div>
 
@@ -96,10 +116,32 @@ export const MobileDrawer: React.FC = () => {
             </button>
           </div>
 
-          {/* Corps du Menu */}
-          <div className="p-4 sm:p-5 space-y-5 flex-1">
+          {/* ========================================================= */}
+          {/* CORPS SCROLLABLE DU MENU (CONTIENT TOUT)                  */}
+          {/* ========================================================= */}
+          <div className="p-4 sm:p-5 space-y-4 flex-1 overflow-y-auto overscroll-contain">
             
-            {/* 1. Sélecteur de Langue Explicite FR / EN */}
+            {/* ACTION RAPIDE #1 : RETOUR À LA CARTE (DEMANDE UTILISATEUR) */}
+            <button
+              type="button"
+              onClick={handleReturnToMap}
+              className="w-full p-3 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-between shadow-lg shadow-indigo-950/50 transition active:scale-[0.98] cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-xl bg-white/20">
+                  <MapIcon className="w-4 h-4 text-white" />
+                </div>
+                <div className="text-left">
+                  <div className="font-black text-sm">🗺️ Retourner à la Carte</div>
+                  <div className="text-[10px] text-cyan-100 font-normal">
+                    Fermer le menu et explorer Paris en direct
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white" />
+            </button>
+
+            {/* SÉLECTEUR DE LANGUE FR / EN */}
             <div className="flex items-center justify-between p-2.5 rounded-xl bg-dark-850 border border-dark-800">
               <div className="flex items-center gap-2 text-xs text-slate-300 font-medium">
                 <Globe className="w-4 h-4 text-pulse-accent" />
@@ -131,13 +173,39 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* 2. Situation en direct (Indicateurs passifs) - Sans mention "Lecture seule" */}
+            {/* NOUVEAUTÉ : CONSTRUCTEUR DE WIDGET MON QUOTIDIEN */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-tr from-cyan-950/60 via-dark-850 to-indigo-950/60 border border-cyan-500/40 shadow-md">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+                  <span className="font-extrabold text-white text-xs">
+                    Widget Mon Quotidien en Temps Réel
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-700/60">
+                  Personnalisable
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mb-2.5">
+                Configurez l'ordre de vos lignes (M13, RER, Tram), les décomptes exacts à vos arrêts et votre thème (OLED, Verre Givré, Néon).
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenWidgetBuilder}
+                className="w-full py-2 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-cyan-950/60 transition active:scale-95 cursor-pointer"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Ouvrir le Constructeur de Widget</span>
+              </button>
+            </div>
+
+            {/* SITUATION EN DIRECT (INDICATEURS) */}
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2 block">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-2 block">
                 {t.mobile.liveSituation}
               </span>
               <div className="grid grid-cols-3 gap-2">
-                <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center select-none cursor-default">
+                <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-center select-none">
                   <div className="flex items-center justify-center text-red-500 mb-1">
                     <AlertCircle className="w-4 h-4" />
                   </div>
@@ -145,7 +213,7 @@ export const MobileDrawer: React.FC = () => {
                   <span className="text-[10px] text-red-300 font-medium">{t.mobile.dangers}</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center select-none cursor-default">
+                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center select-none">
                   <div className="flex items-center justify-center text-amber-500 mb-1">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
@@ -153,7 +221,7 @@ export const MobileDrawer: React.FC = () => {
                   <span className="text-[10px] text-amber-300 font-medium">{t.mobile.warnings}</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center select-none cursor-default">
+                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-center select-none">
                   <div className="flex items-center justify-center text-emerald-500 mb-1">
                     <CheckCircle className="w-4 h-4" />
                   </div>
@@ -163,18 +231,102 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* 3. Actions Principales */}
+            {/* SECTION DÉDIÉE : STATUT DES HUBS & GARES RATP (AVEC SCROLL) */}
+            <div className="p-3.5 rounded-2xl bg-dark-850 border border-dark-750 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Train className="w-4 h-4 text-indigo-400" />
+                  <span className="font-extrabold text-white text-xs">
+                    Hubs & Gares RATP en Direct
+                  </span>
+                </div>
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                  disruptedStations > 0 
+                    ? 'bg-rose-950 text-rose-300 border-rose-800' 
+                    : 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                }`}>
+                  {disruptedStations > 0 ? `${disruptedStations} perturbés` : `${PARIS_TRANSPORT_HUBS.length} hubs fluides`}
+                </span>
+              </div>
+
+              {/* Recherche rapide dans les stations RATP */}
+              <input
+                type="text"
+                value={hubSearch}
+                onChange={(e) => setHubSearch(e.target.value)}
+                placeholder="Filtrer un hub (Châtelet, St-Lazare, 14)..."
+                className="w-full px-2.5 py-1.5 bg-dark-900 border border-dark-750 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none"
+              />
+
+              {/* Liste scrollable des Hubs avec overflow-y-auto */}
+              <div className="max-h-56 overflow-y-auto overscroll-contain space-y-1.5 pr-1">
+                {filteredHubs.map((station) => (
+                  <div
+                    key={station.id}
+                    className="p-2 rounded-xl bg-dark-900/90 border border-dark-800 hover:border-indigo-500/50 flex items-center justify-between gap-2 transition"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-white text-xs truncate">
+                        {station.name}
+                      </div>
+                      <div className="flex items-center gap-1 mt-1 overflow-x-auto no-scrollbar">
+                        {station.lines.slice(0, 4).map((l) => {
+                          const style = getLineStyle(l);
+                          return (
+                            <span
+                              key={l}
+                              style={{ backgroundColor: style.bg, color: style.text }}
+                              className="px-1 py-0.2 rounded text-[9px] font-mono font-bold shrink-0"
+                            >
+                              {style.label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeMobileMenu();
+                          setMobileActiveTab('map');
+                          flyTo(station.lat, station.lng, 16);
+                        }}
+                        className="p-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white transition"
+                        title="Voir sur la carte"
+                      >
+                        <MapIcon className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeMobileMenu();
+                          openMetroRouteModal(station.id);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] transition"
+                        title="Voir les prochains départs"
+                      >
+                        Départs
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ACTIONS PRINCIPALES DE MOBILITÉ */}
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2 block">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-2 block">
                 {t.mobile.mainActions}
               </span>
               <div className="space-y-2">
-                {/* Trajet Métro & RER avec Décompte & Heure de départ */}
+                {/* 1. Trajets & Horaires RATP en Direct */}
                 <button
+                  type="button"
                   onClick={() => {
                     closeMobileMenu();
                     setMobileActiveTab('map');
-                    if (showTransportWidget) toggleTransportWidget();
                     openMetroRouteModal();
                   }}
                   className="w-full p-3 rounded-xl bg-indigo-900/80 border border-indigo-400/50 hover:bg-indigo-800/80 text-white font-semibold text-xs flex items-center justify-between shadow-lg shadow-indigo-950/40 transition active:scale-[0.98] cursor-pointer"
@@ -187,19 +339,19 @@ export const MobileDrawer: React.FC = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       </div>
                       <div className="text-[10px] text-indigo-200/80 font-normal">
-                        Train, Métro, Tram, Bus · Décompte & Horaires réels
+                        Métro, RER, Tram, Bus · Décomptes & Départs réels
                       </div>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-indigo-300" />
                 </button>
 
-                {/* Itinéraire Sûr */}
+                {/* 2. Itinéraire Piéton Sûr */}
                 <button
+                  type="button"
                   onClick={() => {
                     closeMobileMenu();
                     setMobileActiveTab('map');
-                    if (showTransportWidget) toggleTransportWidget();
                     openSafeRouteModal();
                   }}
                   className="w-full p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/40 hover:bg-emerald-900/60 text-emerald-200 font-semibold text-xs flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
@@ -214,12 +366,12 @@ export const MobileDrawer: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-emerald-400" />
                 </button>
 
-                {/* Signaler un incident */}
+                {/* 3. Signaler un incident / Panne / Contrôleurs */}
                 <button
+                  type="button"
                   onClick={() => {
                     closeMobileMenu();
                     setMobileActiveTab('map');
-                    if (showTransportWidget) toggleTransportWidget();
                     openReportModal();
                   }}
                   className="w-full p-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs flex items-center justify-between shadow-lg shadow-rose-950/50 transition active:scale-[0.98] cursor-pointer"
@@ -234,38 +386,9 @@ export const MobileDrawer: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-rose-200" />
                 </button>
 
-                {/* Statut Transports RATP */}
+                {/* 4. Consulter le Flux Complet des Alertes */}
                 <button
-                  onClick={() => {
-                    closeMobileMenu();
-                    setMobileActiveTab('map');
-                    toggleTransportWidget();
-                  }}
-                  className="w-full p-3 rounded-xl bg-indigo-950/70 border border-indigo-500/40 hover:bg-indigo-900/60 text-indigo-200 font-semibold text-xs flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Train className="w-4 h-4 text-indigo-400" />
-                    <div className="text-left">
-                      <div className="font-bold text-white">{t.mobile.ratpAction}</div>
-                      <div className="text-[10px] text-indigo-300/80 font-normal">{t.mobile.ratpDesc}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {disruptedStations > 0 ? (
-                      <span className="text-[10px] bg-rose-600 text-white font-mono font-bold px-1.5 py-0.5 rounded-full">
-                        {disruptedStations}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] bg-emerald-900 text-emerald-300 font-mono px-1.5 py-0.5 rounded">
-                        {t.transport.normal}
-                      </span>
-                    )}
-                    <ChevronRight className="w-4 h-4 text-indigo-400" />
-                  </div>
-                </button>
-
-                {/* Consulter le Flux Complet */}
-                <button
+                  type="button"
                   onClick={() => {
                     setMobileActiveTab('feed');
                     closeMobileMenu();
@@ -289,14 +412,15 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* 4. Outils de Carte (Affichage cartographique intégré) */}
+            {/* CONTRÔLES DE CARTE */}
             <div>
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mb-2 block">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-2 block">
                 {t.mobile.mapControls}
               </span>
               <div className="space-y-2">
                 {/* Périmètres de sécurité */}
                 <button
+                  type="button"
                   onClick={toggleDangerRadius}
                   className={`w-full p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
                     showDangerRadius 
@@ -315,6 +439,7 @@ export const MobileDrawer: React.FC = () => {
 
                 {/* Marqueurs RATP */}
                 <button
+                  type="button"
                   onClick={toggleTransports}
                   className={`w-full p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer active:scale-[0.99] ${
                     showTransports 
@@ -333,6 +458,7 @@ export const MobileDrawer: React.FC = () => {
 
                 {/* Recentrer Paris */}
                 <button
+                  type="button"
                   onClick={() => {
                     closeMobileMenu();
                     setMobileActiveTab('map');
@@ -346,7 +472,7 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* 5. Légende Rétractable / Expansible */}
+            {/* LÉGENDE DE LA CARTE */}
             <div className="border border-dark-800 rounded-xl overflow-hidden bg-dark-850/60">
               <button
                 type="button"
@@ -367,7 +493,7 @@ export const MobileDrawer: React.FC = () => {
                       <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-sm shadow-red-500/50" />
                       <span className="text-red-300 font-medium">{language === 'fr' ? 'Danger Critique' : 'High Danger'}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Rayon 400m' : '400m radius'}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Rayon 380m' : '380m radius'}</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/20 border border-amber-500/20">
@@ -375,7 +501,7 @@ export const MobileDrawer: React.FC = () => {
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50" />
                       <span className="text-amber-300 font-medium">{language === 'fr' ? 'Tension / Vigilance' : 'Tension / Warning'}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Rayon 250m' : '250m radius'}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{language === 'fr' ? 'Rayon 220m' : '220m radius'}</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-950/20 border border-emerald-500/20">
@@ -397,12 +523,24 @@ export const MobileDrawer: React.FC = () => {
               )}
             </div>
 
+            {/* ACTION RAPIDE #2 : RETOUR CARTE EN BAS DE LISTE (ACCESSIBILITÉ PARFAITE) */}
+            <button
+              type="button"
+              onClick={handleReturnToMap}
+              className="w-full py-3 px-4 rounded-xl bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-200 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
+            >
+              <MapIcon className="w-4 h-4 text-cyan-400" />
+              <span>Terminer et revenir à la carte</span>
+            </button>
+
           </div>
 
-          {/* Footer : Statut Wi-Fi / Connexion (avec Safe Area bas) */}
+          {/* ========================================================= */}
+          {/* FOOTER : STATUT RÉSEAU / SÉCURITÉ ANONYME                 */}
+          {/* ========================================================= */}
           <div 
             style={{ paddingBottom: 'max(1rem, calc(0.5rem + env(safe-area-inset-bottom, 0px)))' }}
-            className="p-4 border-t border-dark-800 bg-dark-950/80 space-y-2 shrink-0"
+            className="p-4 border-t border-dark-800 bg-dark-950/90 space-y-2 shrink-0"
           >
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-slate-400 flex items-center gap-1.5 select-none">
@@ -410,7 +548,6 @@ export const MobileDrawer: React.FC = () => {
                 <span>{t.mobile.anonymous}</span>
               </span>
 
-              {/* Indicateur Wi-Fi / Statut Réseau intégré au panneau */}
               <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full select-none cursor-default ${
                 connectionStatus === 'connected' 
                   ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' 
@@ -437,7 +574,6 @@ export const MobileDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* Crédit Open Source */}
             <div className="pt-2 border-t border-dark-800/80 flex items-center justify-between text-[11px]">
               <span className="text-slate-400 font-mono">{t.mobile.openSourceProject}</span>
               <a 

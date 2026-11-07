@@ -30,6 +30,7 @@ const createIncidentSchema = z.object({
   source: z.string().optional().default('Signalement citoyen'),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
+  duration: z.enum(['2h', '12h', '2d']).optional(),
 });
 
 const queryFilterSchema = z.object({
@@ -150,6 +151,7 @@ export const incidentRoutes: FastifyPluginAsync = async (fastify) => {
       category: input.category as IncidentCategory,
       description: input.description,
       source: input.source,
+      duration: input.duration,
     });
 
     // Diffusion temps réel ciblée

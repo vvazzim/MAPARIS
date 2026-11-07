@@ -17,7 +17,7 @@ import {
   Ban
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
-import { Severity, IncidentCategory } from '../types';
+import { Severity, IncidentCategory, IncidentDurationType } from '../types';
 import { safeFetchJson } from '../services/api';
 
 interface AddressSuggestion {
@@ -80,6 +80,7 @@ export const ReportModal: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState<IncidentDurationType>('2h');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -240,6 +241,7 @@ export const ReportModal: React.FC = () => {
         category: finalCategory,
         description: finalDescription,
         source: finalSource,
+        duration: selectedDuration,
       };
 
       if (selectedLocation) {
@@ -801,6 +803,47 @@ export const ReportModal: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* ========================================================= */}
+          {/* DURÉE ESTIMÉE DE L'ÉVÉNEMENT (2h, 12h, 2 jours)          */}
+          {/* ========================================================= */}
+          <div className="p-3 rounded-2xl bg-dark-850/90 border border-dark-750 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Durée estimée de l'événement</span>
+              </label>
+              <span className="text-[10px] font-mono text-cyan-400/90 bg-cyan-950/70 border border-cyan-800/60 px-1.5 py-0.2 rounded">
+                Vérification Communautaire
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: '2h', label: '⚡ 2 Heures', desc: 'Court / Ponctuel', sub: 'Contrôle, retard, malaise' },
+                { id: '12h', label: '⏱️ 12 Heures', desc: 'Prolongé', sub: 'Panne technique, travaux' },
+                { id: '2d', label: '📅 2 Jours', desc: 'Majeur / Grève', sub: 'Grève 48h, manif, blocage' },
+              ].map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setSelectedDuration(d.id as IncidentDurationType)}
+                  className={`p-2.5 rounded-xl border text-left transition active:scale-95 cursor-pointer ${
+                    selectedDuration === d.id
+                      ? 'bg-cyan-950/60 border-cyan-400 text-white shadow-md ring-1 ring-cyan-500'
+                      : 'bg-dark-900 border-dark-800 text-slate-400 hover:text-slate-200 hover:border-dark-700'
+                  }`}
+                >
+                  <div className="font-extrabold text-xs">{d.label}</div>
+                  <div className="text-[10px] text-cyan-300 font-medium">{d.desc}</div>
+                  <div className="text-[9px] text-slate-500 truncate mt-0.5">{d.sub}</div>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400">
+              L'alerte reste vérifiable en direct par les usagers (avec confirmation 1-tap ou signalement de fin).
+            </p>
+          </div>
 
           {/* Footer Submit & Action */}
           <div 

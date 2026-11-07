@@ -282,6 +282,7 @@ export class IncidentRepository {
     description: string;
     source: string;
     ttlSeconds?: number;
+    duration?: '2h' | '12h' | '2d';
   }): Promise<{ incident: Incident; isClusterMerge: boolean; conflictResolved?: boolean }> {
     // Garantit que l'emplacement est toujours un repère parisien ou une adresse lisible, jamais des coordonnées brutes
     const resolvedLocationName = getReadableLocation(data.lat, data.lng, data.location_name);
@@ -354,12 +355,24 @@ export class IncidentRepository {
         nearby.severity = 'danger';
       }
 
-      // Prolongation dynamique courte : max 30 min pour MediaManif, max 60 min pour citoyen (fini les 120min !)
-      const isMediaManif = (nearby.source && nearby.source.includes('MediaManif')) || (data.source && data.source.includes('MediaManif'));
-      const maxLifespanMs = isMediaManif ? 30 * 60 * 1000 : 60 * 60 * 1000;
+      // Gestion dynamique de durée (2h, 12h, ou 2 jours pour grèves/manifs/travaux)
+      const effectiveDuration = data.duration || nearby.duration;
+      const isTwoDays = effectiveDuration === '2d' || nearby.category === 'greve_retard';
+      const isTwelveHours = effectiveDuration === '12h' || nearby.category === 'fermeture_station';
+
+      const maxLifespanMs = isTwoDays 
+        ? 72 * 3600 * 1000  // jusqu'à 3 jours max pour grèves
+        : isTwelveHours 
+        ? 24 * 3600 * 1000  // jusqu'à 24h max pour travaux/fermetures
+        : 6 * 3600 * 1000;  // jusqu'à 6h max pour incident standard
+
+      const extendStepMs = 30 * 60 * 1000; // +30 minutes par fusion clustering
       const maxGlobalExpiry = new Date(createdAt.getTime() + maxLifespanMs);
-      const extendedExpiry = new Date(currentExpiry.getTime() + (isMediaManif ? 10 * 60 * 1000 : 30 * 60 * 1000));
+      const extendedExpiry = new Date(currentExpiry.getTime() + extendStepMs);
       nearby.expires_at = (extendedExpiry > maxGlobalExpiry ? maxGlobalExpiry : extendedExpiry).toISOString();
+      if (effectiveDuration) {
+        nearby.duration = effectiveDuration;
+      }
 
       // Mise à jour de la description avec le signalement le plus récent (strictement limité à 160 caractères)
       if (data.description && data.description.length > 10) {
@@ -376,11 +389,22 @@ export class IncidentRepository {
     // CAS 2 : Aucun périmètre croisé à >50% -> Création d'un NOUVEAU point
     // =========================================================================
     const now = new Date();
-    // TTL dynamique réactif : 20 min MediaManif, 35 min contrôleurs, 30 min citoyen
-    const isMediaManif = data.source && data.source.includes('MediaManif');
-    const isControleurs = data.category === 'controleurs';
-    const defaultTtlSec = isMediaManif ? 1200 : (isControleurs ? 2100 : 1800);
-    const ttlMs = (data.ttlSeconds !== undefined ? data.ttlSeconds : defaultTtlSec) * 1000;
+    
+    // Calcul de la durée de vie initiale selon la durée spécifiée ou la catégorie
+    let ttlMs: number;
+    if (data.duration === '2d' || (!data.duration && data.category === 'greve_retard')) {
+      ttlMs = 48 * 3600 * 1000; // 2 jours (48h)
+    } else if (data.duration === '12h' || (!data.duration && data.category === 'fermeture_station')) {
+      ttlMs = 12 * 3600 * 1000; // 12h
+    } else if (data.duration === '2h') {
+      ttlMs = 2 * 3600 * 1000; // 2h
+    } else if (data.ttlSeconds !== undefined) {
+      ttlMs = data.ttlSeconds * 1000;
+    } else {
+      // Par défaut : 30 minutes de base (+30 min à chaque fusion pour atteindre 1h+)
+      ttlMs = 30 * 60 * 1000;
+    }
+
     const baseExpiry = new Date(now.getTime() + ttlMs);
 
     const newIncident: Incident = {
@@ -400,6 +424,7 @@ export class IncidentRepository {
       expires_at: baseExpiry.toISOString(),
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
+      duration: data.duration || (ttlMs >= 48 * 3600 * 1000 ? '2d' : ttlMs >= 12 * 3600 * 1000 ? '12h' : '2h'),
     };
 
     await this.saveIncident(newIncident);
@@ -607,10 +632,14 @@ export class IncidentRepository {
     inc.reliability_score = this.computeReliability(inc);
     inc.updated_at = new Date().toISOString();
 
-    // Un upvote prolonge également la durée de vie de 15 minutes (max 6h)
+    // Un upvote confirme et prolonge la durée de vie selon le type d'événement (2h, 12h ou 2 jours)
     const currentExpiry = new Date(inc.expires_at).getTime();
-    const maxGlobalExpiry = new Date(inc.created_at).getTime() + 6 * 3600 * 1000;
-    const newExpiry = Math.min(maxGlobalExpiry, currentExpiry + 15 * 60 * 1000);
+    const isLongEvent = inc.duration === '2d' || inc.category === 'greve_retard' || inc.category === 'manifestation';
+    const isMediumEvent = inc.duration === '12h' || inc.category === 'fermeture_station';
+    const maxLifespanMs = isLongEvent ? 72 * 3600 * 1000 : (isMediumEvent ? 24 * 3600 * 1000 : 8 * 3600 * 1000);
+    const maxGlobalExpiry = new Date(inc.created_at).getTime() + maxLifespanMs;
+    const extensionMs = isLongEvent ? 6 * 3600 * 1000 : (isMediumEvent ? 2 * 3600 * 1000 : 30 * 60 * 1000);
+    const newExpiry = Math.min(maxGlobalExpiry, currentExpiry + extensionMs);
     inc.expires_at = new Date(newExpiry).toISOString();
 
     await this.saveIncident(inc);

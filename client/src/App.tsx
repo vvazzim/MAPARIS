@@ -8,6 +8,7 @@ import { SafeRouteModal } from './components/SafeRouteModal';
 import { MetroRouteModal } from './components/MetroRouteModal';
 import { MobileDrawer } from './components/MobileDrawer';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { CustomTransitWidget } from './components/CustomTransitWidget';
 import { socket, initSocketListeners } from './services/socket';
 import { useIncidentStore } from './store/useIncidentStore';
 import { Incident } from './types';
@@ -56,12 +57,14 @@ export const App: React.FC = () => {
     };
   }, [setConnectionStatus, addIncident, setIncidents, updateIncident, removeIncident]);
 
-  // Verrouillage anti-défilement / anti-rebond sur mobile pour que l'écran ne descende jamais
+  // Verrouillage anti-défilement global tout en préservant le scroll tactile (horizontal et vertical) et les boutons
   useEffect(() => {
     const handleTouchMove = (e: TouchEvent) => {
       const target = e.target as HTMLElement | null;
-      const isScrollable = target?.closest('.overflow-y-auto, .overflow-auto');
-      if (!isScrollable && e.cancelable) {
+      const isInteractiveOrScrollable = target?.closest(
+        '.overflow-y-auto, .overflow-x-auto, .overflow-auto, .leaflet-container, button, input, select, textarea, a, [role="button"], [data-allow-touch]'
+      );
+      if (!isInteractiveOrScrollable && e.cancelable) {
         e.preventDefault();
       }
     };
@@ -102,6 +105,9 @@ export const App: React.FC = () => {
 
       {/* Mobile Bottom Navigation Bar (< lg screens) */}
       <MobileBottomNav />
+
+      {/* Floating Custom Real-Time Transit Widget */}
+      <CustomTransitWidget />
 
       {/* Responsive Sandwich Drawer (< lg screens) */}
       <MobileDrawer />

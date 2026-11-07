@@ -47,6 +47,7 @@ export interface Incident {
   reliability_score?: number;
   expires_at?: string;
   verified?: boolean;
+  duration?: IncidentDurationType;
   created_at: string;
   updated_at?: string;
 }
@@ -102,3 +103,30 @@ export interface SafeRouteResult {
   safetyScore: number;
   recommendation: string;
 }
+
+export type WidgetTheme = 'glass' | 'oled' | 'neon' | 'classic';
+export type WidgetDensity = 'compact' | 'standard' | 'ticker';
+export type WidgetLocationMode = 'gps' | 'station';
+
+export interface CustomWidgetLineItem {
+  id: string;
+  lineKey: string;
+  stopName: string;
+  stopId: string;
+  direction: string;
+  directionCode?: string;
+  customLabel?: string;
+}
+
+export interface CustomWidgetConfig {
+  enabled: boolean;
+  dockPosition: 'bottom' | 'top' | 'floating';
+  theme: WidgetTheme;
+  density: WidgetDensity;
+  locationMode: WidgetLocationMode;
+  selectedStationId?: string;
+  selectedStationName?: string;
+  lines: CustomWidgetLineItem[];
+}
+
+export type IncidentDurationType = '2h' | '12h' | '2d';

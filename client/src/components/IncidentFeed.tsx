@@ -3,7 +3,10 @@ import {
   Activity, 
   MapPin, 
   Search, 
-  Map as MapIcon
+  Map as MapIcon,
+  ThumbsUp,
+  Check,
+  Clock
 } from 'lucide-react';
 import { useIncidentStore } from '../store/useIncidentStore';
 import { Severity } from '../types';
@@ -23,6 +26,7 @@ export const IncidentFeed: React.FC = () => {
     setMobileActiveTab,
     language,
     t,
+    voteIncident,
   } = useIncidentStore();
 
   const [searchFilter, setSearchFilter] = useState('');
@@ -228,11 +232,57 @@ export const IncidentFeed: React.FC = () => {
                 </div>
 
                 {/* Ligne 2 : Adresse Courte & Épurée */}
-                <div className="flex items-center gap-1.5 text-slate-300">
+                <div className="flex items-center gap-1.5 text-slate-300 mb-1.5">
                   <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span className="text-xs font-medium text-slate-200 truncate">
                     {shortAddress}
                   </span>
+                </div>
+
+                {/* Ligne 3 : Extrait description */}
+                {incident.description && (
+                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mb-2 bg-dark-950/60 p-1.5 rounded-lg border border-dark-800">
+                    {incident.description}
+                  </p>
+                )}
+
+                {/* Ligne 4 : Statut de Vérification & Durée (2h à 2 jours) */}
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pb-1.5 mb-1.5 border-b border-dark-800/60">
+                  <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    <span>{incident.upvotes > 1 ? `Confirmé (${incident.upvotes} usagers)` : 'Vérification en direct'}</span>
+                  </span>
+                  <span className="flex items-center gap-1 px-1.5 py-0.2 rounded bg-dark-800 text-slate-300">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    <span>{incident.duration === '2d' || incident.category === 'greve_retard' ? 'Grève (2j)' : incident.duration === '12h' ? '12h' : '2h'}</span>
+                  </span>
+                </div>
+
+                {/* Ligne 5 : Actions 1-tap Toujours en cours / Terminé */}
+                <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      voteIncident(incident.id, 'up');
+                    }}
+                    className="flex-1 py-1 px-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 text-emerald-300 font-bold flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                    title="Confirmer que l'incident ou la perturbation est toujours en cours"
+                  >
+                    <ThumbsUp className="w-3 h-3" />
+                    <span>Toujours en cours ({incident.upvotes})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      voteIncident(incident.id, 'down');
+                    }}
+                    className="py-1 px-2.5 rounded-lg bg-dark-800 hover:bg-dark-750 border border-dark-700 text-slate-400 hover:text-white transition active:scale-95 cursor-pointer"
+                    title="Signaler comme terminé ou rétabli"
+                  >
+                    <span>Terminé</span>
+                  </button>
                 </div>
               </div>
             );
