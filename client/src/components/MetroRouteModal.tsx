@@ -25,13 +25,15 @@ import {
   togglePinStop, 
   isStopPinned, 
   getStopRealtimeDeparture, 
-  fetchNetworkDisruptions 
+  fetchNetworkDisruptions,
+  RATP_LINES_METADATA 
 } from '../services/ratpRealtimeService';
 import { 
   IDF_LINES_DIRECTORY, 
   SAMPLE_IDF_DISRUPTIONS, 
   TransitStopItem, 
-  TransitDisruptionItem 
+  TransitDisruptionItem,
+  TransitLineData 
 } from '../data/transitLinesData';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { PinnedTransitStop } from '../types';
@@ -39,6 +41,74 @@ import { PinnedTransitStop } from '../types';
 type ModalTab = 'explorer' | 'pinned' | 'disruptions' | 'planner';
 type ModeFilter = 'all' | 'metro' | 'rer' | 'tram' | 'bus';
 type DisruptionFilter = 'all' | 'delay' | 'cancellation' | 'strike' | 'station_closure';
+
+/**
+ * Résout n'importe quelle ligne IDF de manière ultra-résiliente
+ * (Annuaire statique enrichi + Génération dynamique depuis RATP_LINES_METADATA)
+ */
+export function resolveLineData(rawKey: string): TransitLineData {
+  const norm = normalizeLineKey(rawKey || 'M13');
+  if (IDF_LINES_DIRECTORY[norm]) {
+    return IDF_LINES_DIRECTORY[norm];
+  }
+  const meta = RATP_LINES_METADATA[norm];
+  if (meta) {
+    const matchingStations = (TRANSIT_STATIONS || []).filter((s) =>
+      s && s.lines && s.lines.some((l) => normalizeLineKey(l) === norm)
+    );
+    const stops: TransitStopItem[] = matchingStations.map((st, idx) => ({
+      id: `${norm.toLowerCase()}-${st.id}`,
+      name: st.name,
+      order: idx + 1,
+      city: st.district || 'Paris',
+      lat: st.lat,
+      lng: st.lng,
+      lines: st.lines,
+      isAccessiblePmr: true,
+      hubId: st.id,
+    }));
+
+    if (stops.length < 2) {
+      const d1 = meta.directions?.[0]?.destination || 'Terminus 1';
+      const d2 = meta.directions?.[1]?.destination || 'Terminus 2';
+      stops.unshift({
+        id: `${norm.toLowerCase()}-t1`,
+        name: d1,
+        order: 1,
+        city: 'Île-de-France',
+        lat: 48.8566,
+        lng: 2.3522,
+        lines: [norm],
+        isAccessiblePmr: true,
+      });
+      stops.push({
+        id: `${norm.toLowerCase()}-t2`,
+        name: d2,
+        order: stops.length + 1,
+        city: 'Île-de-France',
+        lat: 48.8666,
+        lng: 2.3422,
+        lines: [norm],
+        isAccessiblePmr: true,
+      });
+    }
+
+    const dir1 = meta.directions?.[0] || { destination: 'Terminus 1', code: 'DIR1' };
+    const dir2 = meta.directions?.[1] || { destination: 'Terminus 2', code: 'DIR2' };
+
+    return {
+      key: norm,
+      name: meta.name,
+      type: meta.type,
+      bg: meta.bg,
+      text: meta.text,
+      directions: [dir1, dir2],
+      stops,
+    };
+  }
+
+  return IDF_LINES_DIRECTORY['M13'];
+}
 
 export const MetroRouteModal: React.FC = () => {
   const { 
@@ -117,45 +187,66 @@ export const MetroRouteModal: React.FC = () => {
     if (isMetroRouteModalOpen) {
       fetchNetworkDisruptions().then((data) => {
         if (data && data.length > 0) setDisruptions(data);
+      }).catch((err) => {
+        console.warn('[MetroRouteModal] Erreur chargement perturbations API:', err);
       });
-      setPinnedStopsList(getPinnedStops());
+      try {
+        setPinnedStopsList(getPinnedStops());
+      } catch (err) {
+        console.warn('[MetroRouteModal] Erreur lecture arrêts épinglés:', err);
+      }
 
       // Si l'utilisateur a cliqué "Départs" depuis un hub (ex: Châtelet, St-Lazare) ou une ligne spécifique
       if (metroRouteOrigin) {
-        // 1. Ligne directe (ex: 'M14', 'RER A')
-        const directKey = normalizeLineKey(metroRouteOrigin);
-        if (IDF_LINES_DIRECTORY[directKey]) {
-          setSelectedLineKey(directKey);
-          setDirectionIndex(0);
-          setSearchFilter('');
-          setActiveTab('explorer');
-          return;
-        }
+        try {
+          const originClean = String(metroRouteOrigin).toLowerCase().trim();
 
-        // 2. Hub RATP ou Transit Station par ID ou nom (ex: 'station-chatelet')
-        const hub = PARIS_TRANSPORT_HUBS.find(h => h.id === metroRouteOrigin || h.name.toLowerCase() === metroRouteOrigin.toLowerCase()) ||
-                    TRANSIT_STATIONS.find(s => s.id === metroRouteOrigin || s.name.toLowerCase() === metroRouteOrigin.toLowerCase());
-        if (hub && hub.lines && hub.lines.length > 0) {
-          const firstLine = normalizeLineKey(hub.lines[0]);
-          if (IDF_LINES_DIRECTORY[firstLine]) {
-            setSelectedLineKey(firstLine);
-            setDirectionIndex(0);
-          }
-          setSearchFilter('');
-          setActiveTab('explorer');
-          return;
-        }
-
-        // 3. Arrêt spécifique dans l'annuaire des lignes IDF
-        for (const line of Object.values(IDF_LINES_DIRECTORY)) {
-          const hasStop = line.stops.some(st => st.id === metroRouteOrigin || st.name.toLowerCase() === metroRouteOrigin.toLowerCase());
-          if (hasStop) {
-            setSelectedLineKey(line.key);
+          // 1. Ligne directe (ex: 'M14', 'RER A', 'M1')
+          const directKey = normalizeLineKey(metroRouteOrigin);
+          if (IDF_LINES_DIRECTORY[directKey] || RATP_LINES_METADATA[directKey]) {
+            setSelectedLineKey(directKey);
             setDirectionIndex(0);
             setSearchFilter('');
             setActiveTab('explorer');
             return;
           }
+
+          // 2. Hub RATP ou Transit Station par ID ou nom (ex: 'station-chatelet')
+          const hub = (PARIS_TRANSPORT_HUBS || []).find(h => 
+            h && (h.id === metroRouteOrigin || (h.name && h.name.toLowerCase() === originClean))
+          ) || (TRANSIT_STATIONS || []).find(s => 
+            s && (s.id === metroRouteOrigin || (s.name && s.name.toLowerCase() === originClean))
+          );
+
+          if (hub && hub.lines && hub.lines.length > 0) {
+            const matchedLine = hub.lines.find(l => 
+              l && (IDF_LINES_DIRECTORY[normalizeLineKey(l)] || RATP_LINES_METADATA[normalizeLineKey(l)])
+            );
+            if (matchedLine) {
+              setSelectedLineKey(normalizeLineKey(matchedLine));
+              setDirectionIndex(0);
+            }
+            setSearchFilter(hub.name || '');
+            setActiveTab('explorer');
+            return;
+          }
+
+          // 3. Arrêt spécifique dans l'annuaire des lignes IDF
+          for (const line of Object.values(IDF_LINES_DIRECTORY)) {
+            if (!line?.stops) continue;
+            const hasStop = line.stops.some(st => 
+              st && (st.id === metroRouteOrigin || (st.name && st.name.toLowerCase() === originClean))
+            );
+            if (hasStop) {
+              setSelectedLineKey(line.key);
+              setDirectionIndex(0);
+              setSearchFilter('');
+              setActiveTab('explorer');
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('[MetroRouteModal] Erreur résolution metroRouteOrigin:', err);
         }
       }
     }
@@ -163,8 +254,8 @@ export const MetroRouteModal: React.FC = () => {
 
   if (!isMetroRouteModalOpen) return null;
 
-  // Ligne active dans l'explorateur (avec repli systématique sécurisé)
-  const activeLineData = IDF_LINES_DIRECTORY[normalizeLineKey(selectedLineKey)] || IDF_LINES_DIRECTORY['M13'];
+  // Ligne active dans l'explorateur (avec résolution dynamique universelle)
+  const activeLineData = resolveLineData(selectedLineKey);
   const activeLineStyle = getLineStyle(activeLineData?.key || 'M13');
   const activeDirection = activeLineData?.directions?.[directionIndex] || activeLineData?.directions?.[0] || { destination: 'Terminus', code: 'DIR' };
 
@@ -185,10 +276,16 @@ export const MetroRouteModal: React.FC = () => {
     });
   }, [activeLineData, directionIndex, searchFilter]);
 
-  // Lignes filtrées pour le sélecteur horizontal
+  // Lignes filtrées pour le sélecteur horizontal (toutes les lignes RATP + RER + Tram + Bus)
   const availableLinesList = useMemo(() => {
-    const all = Object.values(IDF_LINES_DIRECTORY || {});
-    return all.filter((l) => {
+    const defaultKeys = [
+      'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14',
+      'RER A', 'RER B', 'RER C', 'RER D', 'RER E',
+      'T3b', 'T1', 'T2',
+      'Bus 54', 'Bus 66', 'Bus 74', 'Bus 173'
+    ];
+    const resolved = defaultKeys.map(k => resolveLineData(k)).filter(Boolean);
+    return resolved.filter((l) => {
       if (!l) return false;
       if (modeFilter !== 'all' && l.type !== modeFilter) return false;
       return true;
@@ -206,26 +303,56 @@ export const MetroRouteModal: React.FC = () => {
 
   // Bascule du pinning pour un arrêt
   const handleTogglePin = (stop: TransitStopItem) => {
-    if (!stop || !activeLineData) return;
-    const dir = activeDirection || { destination: 'Terminus', code: 'DIR' };
-    const pinItem: PinnedTransitStop = {
-      id: `pin-${activeLineData.key}-${stop.id}-${dir.code}`,
-      lineKey: activeLineData.key,
-      stopName: stop.name,
-      stopId: stop.id,
-      direction: dir.destination,
-      directionCode: dir.code,
-      hubId: stop.hubId,
-      addedAt: Date.now(),
-    };
-    togglePinStop(pinItem);
-    setPinnedStopsList(getPinnedStops());
+    try {
+      if (!stop || !activeLineData) return;
+      const dir = activeDirection || { destination: 'Terminus', code: 'DIR' };
+      const pinItem: PinnedTransitStop = {
+        id: `pin-${activeLineData.key}-${stop.id}-${dir.code}`,
+        lineKey: activeLineData.key,
+        stopName: stop.name || 'Arrêt',
+        stopId: stop.id || 'stop',
+        direction: dir.destination || 'Terminus',
+        directionCode: dir.code || 'DIR',
+        hubId: stop.hubId,
+        addedAt: Date.now(),
+      };
+      togglePinStop(pinItem);
+      setPinnedStopsList(getPinnedStops());
+    } catch (err) {
+      console.warn('[MetroRouteModal] Erreur toggle pin:', err);
+    }
   };
 
   // Trouver si un incident actif (contrôleur ou arrêt HS) touche un arrêt donné
   const getStopAlerts = (stopName: string) => {
-    const stopClean = (stopName || '').toLowerCase().trim();
-    if (!stopClean) {
+    try {
+      const stopClean = (stopName || '').toLowerCase().trim();
+      if (!stopClean) {
+        return {
+          hasControllers: false,
+          controllerCount: 0,
+          hasDisruption: false,
+          alerts: [],
+        };
+      }
+
+      const relevant = (incidents || []).filter((inc) => {
+        if (!inc) return false;
+        const loc = (inc.location_name || '').toLowerCase();
+        const desc = (inc.description || '').toLowerCase();
+        return (loc && loc.includes(stopClean)) || (desc && desc.includes(stopClean));
+      });
+
+      const controllers = relevant.filter((i) => i.category === 'controleurs');
+      const disruptionsList = relevant.filter((i) => i.category === 'arret_perturbe' || i.category === 'fermeture_station' || i.category === 'greve_retard');
+
+      return {
+        hasControllers: controllers.length > 0,
+        controllerCount: controllers.length,
+        hasDisruption: disruptionsList.length > 0,
+        alerts: relevant,
+      };
+    } catch {
       return {
         hasControllers: false,
         controllerCount: 0,
@@ -233,23 +360,6 @@ export const MetroRouteModal: React.FC = () => {
         alerts: [],
       };
     }
-
-    const relevant = (incidents || []).filter((inc) => {
-      if (!inc) return false;
-      const loc = (inc.location_name || '').toLowerCase();
-      const desc = (inc.description || '').toLowerCase();
-      return (loc && loc.includes(stopClean)) || (desc && desc.includes(stopClean));
-    });
-
-    const controllers = relevant.filter((i) => i.category === 'controleurs');
-    const disruptionsList = relevant.filter((i) => i.category === 'arret_perturbe' || i.category === 'fermeture_station' || i.category === 'greve_retard');
-
-    return {
-      hasControllers: controllers.length > 0,
-      controllerCount: controllers.length,
-      hasDisruption: disruptionsList.length > 0,
-      alerts: relevant,
-    };
   };
 
   const getDisruptionCoordinates = (disrup: TransitDisruptionItem): { lat: number; lng: number } => {
@@ -267,14 +377,18 @@ export const MetroRouteModal: React.FC = () => {
   };
 
   const handleComputeRoute = () => {
-    const oQ = (originSearch || '').toLowerCase().trim();
-    const dQ = (destSearch || '').toLowerCase().trim();
-    const origin = (TRANSIT_STATIONS || []).find(s => s && s.name && s.name.toLowerCase().includes(oQ)) || originStation;
-    const dest = (TRANSIT_STATIONS || []).find(s => s && s.name && s.name.toLowerCase().includes(dQ)) || destStation;
-    if (origin && dest && origin.id && dest.id) {
-      const result = calculateMetroRoute(origin.id, dest.id);
-      setRoutePlan(result);
-      setActiveMetroRoute(result);
+    try {
+      const oQ = (originSearch || '').toLowerCase().trim();
+      const dQ = (destSearch || '').toLowerCase().trim();
+      const origin = (TRANSIT_STATIONS || []).find(s => s && s.name && s.name.toLowerCase().includes(oQ)) || originStation;
+      const dest = (TRANSIT_STATIONS || []).find(s => s && s.name && s.name.toLowerCase().includes(dQ)) || destStation;
+      if (origin && dest && origin.id && dest.id) {
+        const result = calculateMetroRoute(origin.id, dest.id);
+        setRoutePlan(result);
+        setActiveMetroRoute(result);
+      }
+    } catch (err) {
+      console.warn('[MetroRouteModal] Erreur calcul itinéraire:', err);
     }
   };
 
@@ -546,16 +660,18 @@ export const MetroRouteModal: React.FC = () => {
                 </div>
               ) : (
                 displayedStops.map((stop, idx) => {
-                  const isPinned = isStopPinned(stop.name, activeLineData.key, activeDirection.destination);
+                  if (!stop) return null;
+                  const stopName = stop.name || 'Arrêt';
+                  const isPinned = isStopPinned(stopName, activeLineData.key, activeDirection.destination);
                   const dep = getStopRealtimeDeparture(
-                    stop.id,
-                    stop.order,
+                    stop.id || `stop-${idx}`,
+                    stop.order || idx + 1,
                     displayedStops.length,
                     activeLineData.key,
-                    activeDirection.code,
+                    activeDirection.code || 'DIR',
                     currentAlignedTime
                   );
-                  const alerts = getStopAlerts(stop.name);
+                  const alerts = getStopAlerts(stopName);
                   const isTerminal = idx === 0 || idx === displayedStops.length - 1;
 
                   return (
@@ -768,13 +884,13 @@ export const MetroRouteModal: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {pinnedStopsList.map((pin) => {
-                    const style = getLineStyle(pin.lineKey);
+                  {pinnedStopsList.filter(Boolean).map((pin) => {
+                    const style = getLineStyle(pin.lineKey || 'M13');
                     const dep = getStopRealtimeDeparture(
-                      pin.stopId,
+                      pin.stopId || 'pin',
                       3,
                       15,
-                      pin.lineKey,
+                      pin.lineKey || 'M13',
                       pin.directionCode || 'DIR',
                       currentAlignedTime
                     );
@@ -942,8 +1058,8 @@ export const MetroRouteModal: React.FC = () => {
 
               {/* Liste des perturbations */}
               <div className="space-y-2.5">
-                {filteredDisruptions.map((disrup) => {
-                  const style = getLineStyle(disrup.lineKey);
+                {filteredDisruptions.filter(Boolean).map((disrup) => {
+                  const style = getLineStyle(disrup.lineKey || 'M13');
 
                   return (
                     <div

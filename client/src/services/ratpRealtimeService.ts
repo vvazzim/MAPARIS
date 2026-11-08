@@ -840,8 +840,9 @@ export function getLineStyle(rawLine: string): {
   fullName: string;
   type: TransitLineType 
 } {
-  const normalizedKey = normalizeLineKey(rawLine);
-  const meta = RATP_LINES_METADATA[normalizedKey] || RATP_LINES_METADATA[rawLine];
+  const safeRaw = (rawLine || 'M13').trim();
+  const normalizedKey = normalizeLineKey(safeRaw);
+  const meta = RATP_LINES_METADATA[normalizedKey] || RATP_LINES_METADATA[safeRaw];
 
   if (meta) {
     const fullName = meta.type === 'metro' ? `M${meta.name}` : meta.type === 'bus' ? `Bus ${meta.name}` : meta.name;
@@ -855,13 +856,14 @@ export function getLineStyle(rawLine: string): {
   }
 
   // Fallback bus dynamique (ex: Bus 163, Bus 28, Bus 341)
-  if (/^\d{2,3}$/.test(rawLine) || rawLine.toLowerCase().startsWith('bus')) {
-    const num = rawLine.replace(/\D/g, '');
+  const lowerRaw = safeRaw.toLowerCase();
+  if (/^\d{2,3}$/.test(safeRaw) || lowerRaw.startsWith('bus')) {
+    const num = safeRaw.replace(/\D/g, '');
     return {
       bg: '#83286B', // Magenta bus officiel
       text: '#FFFFFF',
-      label: num || rawLine,
-      fullName: `Bus ${num || rawLine}`,
+      label: num || safeRaw,
+      fullName: `Bus ${num || safeRaw}`,
       type: 'bus',
     };
   }
@@ -869,8 +871,8 @@ export function getLineStyle(rawLine: string): {
   return {
     bg: '#0065A2', // Bleu IDFM
     text: '#FFFFFF',
-    label: rawLine,
-    fullName: rawLine,
+    label: safeRaw,
+    fullName: safeRaw,
     type: 'metro',
   };
 }
@@ -1049,55 +1051,69 @@ export function getStopRealtimeDeparture(
   isApproaching: boolean;
   status: 'on_time' | 'delayed' | 'disrupted';
 } {
-  const validDate = (baseDate instanceof Date && !isNaN(baseDate.getTime())) ? baseDate : getAlignedNow();
-  const normKey = normalizeLineKey(lineKey || 'M13');
-  const meta = RATP_LINES_METADATA[normKey] || RATP_LINES_METADATA['M13'];
-  const hour = validDate.getHours();
-  const isWeekend = validDate.getDay() === 0 || validDate.getDay() === 6;
-  const headwayMin = getHeadwayMinutes(meta, hour, isWeekend);
-  const headwaySec = Math.max(90, Math.round(headwayMin * 60));
+  try {
+    const validDate = (baseDate instanceof Date && !isNaN(baseDate.getTime())) ? baseDate : getAlignedNow();
+    const normKey = normalizeLineKey(lineKey || 'M13');
+    const meta = RATP_LINES_METADATA[normKey] || RATP_LINES_METADATA['M13'];
+    const hour = validDate.getHours();
+    const isWeekend = validDate.getDay() === 0 || validDate.getDay() === 6;
+    const headwayMin = getHeadwayMinutes(meta, hour, isWeekend);
+    const headwaySec = Math.max(90, Math.round(headwayMin * 60));
 
-  // Déphasage naturel selon la position de l'arrêt le long du parcours (2 min par arrêt)
-  const linePhaseOffset = ((stopOrder || 1) * 125) % headwaySec;
-  const seedKey = `${stopId || 'stop'}_${normKey}_${directionCode || 'DIR'}`;
-  const pseudoRandom = Math.abs(hashString(seedKey)) % 30;
+    // Déphasage naturel selon la position de l'arrêt le long du parcours (2 min par arrêt)
+    const linePhaseOffset = ((stopOrder || 1) * 125) % headwaySec;
+    const seedKey = `${stopId || 'stop'}_${normKey}_${directionCode || 'DIR'}`;
+    const pseudoRandom = Math.abs(hashString(seedKey)) % 30;
 
-  const totalCurrentSeconds = Math.floor(validDate.getTime() / 1000);
-  const cyclePos = (totalCurrentSeconds + linePhaseOffset + pseudoRandom) % headwaySec;
-  const secondsUntilNext = headwaySec - cyclePos;
+    const totalCurrentSeconds = Math.floor(validDate.getTime() / 1000);
+    const cyclePos = (totalCurrentSeconds + linePhaseOffset + pseudoRandom) % headwaySec;
+    const secondsUntilNext = headwaySec - cyclePos;
 
-  const remainingMin = Math.floor(secondsUntilNext / 60);
-  const remainingSecondsPart = secondsUntilNext % 60;
-  const followingMin = remainingMin + Math.round(headwayMin);
+    const remainingMin = Math.floor(secondsUntilNext / 60);
+    const remainingSecondsPart = secondsUntilNext % 60;
+    const followingMin = remainingMin + Math.round(headwayMin);
 
-  let remainingDisplay: string;
-  const isApproaching = remainingMin === 0;
+    let remainingDisplay: string;
+    const isApproaching = remainingMin === 0;
 
-  if (isApproaching) {
-    if (secondsUntilNext < 30) {
-      remainingDisplay = "À l'approche";
+    if (isApproaching) {
+      if (secondsUntilNext < 30) {
+        remainingDisplay = "À l'approche";
+      } else {
+        remainingDisplay = `${remainingSecondsPart}s`;
+      }
     } else {
-      remainingDisplay = `${remainingSecondsPart}s`;
+      remainingDisplay = `${remainingMin} min`;
     }
-  } else {
-    remainingDisplay = `${remainingMin} min`;
+
+    const depDate = new Date(validDate.getTime() + secondsUntilNext * 1000);
+    const departureTime = `${String(depDate.getHours()).padStart(2, '0')}:${String(depDate.getMinutes()).padStart(2, '0')}`;
+    const followingDate = new Date(validDate.getTime() + (secondsUntilNext + headwayMin * 60) * 1000);
+    const followingDepartureTime = `${String(followingDate.getHours()).padStart(2, '0')}:${String(followingDate.getMinutes()).padStart(2, '0')}`;
+
+    return {
+      remainingMinutes: remainingMin,
+      remainingSeconds: secondsUntilNext,
+      remainingDisplay,
+      followingDisplay: `${followingMin} min`,
+      departureTime,
+      followingDepartureTime,
+      isApproaching,
+      status: 'on_time',
+    };
+  } catch (err) {
+    console.warn('[ratpRealtimeService] Erreur dans getStopRealtimeDeparture:', err);
+    return {
+      remainingMinutes: 2,
+      remainingSeconds: 120,
+      remainingDisplay: '2 min',
+      followingDisplay: '6 min',
+      departureTime: '--:--',
+      followingDepartureTime: '--:--',
+      isApproaching: false,
+      status: 'on_time',
+    };
   }
-
-  const depDate = new Date(baseDate.getTime() + secondsUntilNext * 1000);
-  const departureTime = `${String(depDate.getHours()).padStart(2, '0')}:${String(depDate.getMinutes()).padStart(2, '0')}`;
-  const followingDate = new Date(baseDate.getTime() + (secondsUntilNext + headwayMin * 60) * 1000);
-  const followingDepartureTime = `${String(followingDate.getHours()).padStart(2, '0')}:${String(followingDate.getMinutes()).padStart(2, '0')}`;
-
-  return {
-    remainingMinutes: remainingMin,
-    remainingSeconds: secondsUntilNext,
-    remainingDisplay,
-    followingDisplay: `${followingMin} min`,
-    departureTime,
-    followingDepartureTime,
-    isApproaching,
-    status: 'on_time',
-  };
 }
 
 /**

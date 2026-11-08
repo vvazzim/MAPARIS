@@ -20,7 +20,8 @@ export const App: React.FC = () => {
     addIncident, 
     setIncidents, 
     updateIncident, 
-    removeIncident 
+    removeIncident,
+    closeMetroRouteModal 
   } = useIncidentStore();
 
   useEffect(() => {
@@ -122,7 +123,11 @@ export const App: React.FC = () => {
       <SafeRouteModal />
 
       {/* Real-time Metro & RER Trip Planner Modal */}
-      <ErrorBoundary fallbackTitle="Module de transport RATP indisponible">
+      <ErrorBoundary 
+        fallbackTitle="Module de transport RATP indisponible"
+        onClose={closeMetroRouteModal}
+        onReset={closeMetroRouteModal}
+      >
         <MetroRouteModal />
       </ErrorBoundary>
     </div>
