@@ -678,9 +678,10 @@ export function searchTransitStations(
  * Recherche une station par son identifiant ou une sous-chaîne de son nom
  */
 export function findMetroStation(queryOrId: string): TransitStation | undefined {
-  const q = queryOrId.toLowerCase().trim();
+  if (!queryOrId) return undefined;
+  const q = (queryOrId || '').toLowerCase().trim();
   return TRANSIT_STATIONS.find(
-    (s) => s.id.toLowerCase() === q || s.name.toLowerCase().includes(q)
+    (s) => s && ((s.id && s.id.toLowerCase() === q) || (s.name && s.name.toLowerCase().includes(q)))
   );
 }
 

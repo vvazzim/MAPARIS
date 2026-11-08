@@ -9,6 +9,7 @@ import { MetroRouteModal } from './components/MetroRouteModal';
 import { MobileDrawer } from './components/MobileDrawer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { CustomTransitWidget } from './components/CustomTransitWidget';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { socket, initSocketListeners } from './services/socket';
 import { useIncidentStore } from './store/useIncidentStore';
 import { Incident } from './types';
@@ -107,7 +108,9 @@ export const App: React.FC = () => {
       <MobileBottomNav />
 
       {/* Floating Custom Real-Time Transit Widget */}
-      <CustomTransitWidget />
+      <ErrorBoundary fallbackTitle="Widget de transport temporairement suspendu">
+        <CustomTransitWidget />
+      </ErrorBoundary>
 
       {/* Responsive Sandwich Drawer (< lg screens) */}
       <MobileDrawer />
@@ -119,7 +122,9 @@ export const App: React.FC = () => {
       <SafeRouteModal />
 
       {/* Real-time Metro & RER Trip Planner Modal */}
-      <MetroRouteModal />
+      <ErrorBoundary fallbackTitle="Module de transport RATP indisponible">
+        <MetroRouteModal />
+      </ErrorBoundary>
     </div>
   );
 };

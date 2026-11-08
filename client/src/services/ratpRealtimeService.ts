@@ -972,7 +972,11 @@ export function getPinnedStops(): PinnedTransitStop[] {
       return DEFAULT_PINNED_STOPS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PINNED_STOPS;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const valid = parsed.filter(p => p && typeof p.stopName === 'string' && typeof p.lineKey === 'string');
+      return valid.length > 0 ? valid : DEFAULT_PINNED_STOPS;
+    }
+    return DEFAULT_PINNED_STOPS;
   } catch (err) {
     console.warn('[Transit] Erreur lecture arrêts épinglés:', err);
     return DEFAULT_PINNED_STOPS;
@@ -989,9 +993,12 @@ export function savePinnedStops(stops: PinnedTransitStop[]): void {
 }
 
 export function togglePinStop(stop: PinnedTransitStop): boolean {
+  if (!stop) return false;
   const current = getPinnedStops();
+  const cleanStopName = (stop.stopName || '').toLowerCase().trim();
+  const cleanLine = normalizeLineKey(stop.lineKey || '');
   const existsIndex = current.findIndex(
-    (p) => p.lineKey === stop.lineKey && p.stopName.toLowerCase() === stop.stopName.toLowerCase() && p.direction === stop.direction
+    (p) => p && normalizeLineKey(p.lineKey || '') === cleanLine && (p.stopName || '').toLowerCase().trim() === cleanStopName && p.direction === stop.direction
   );
 
   let next: PinnedTransitStop[];
@@ -1011,9 +1018,12 @@ export function togglePinStop(stop: PinnedTransitStop): boolean {
 
 export function isStopPinned(stopName: string, lineKey: string, direction?: string): boolean {
   const current = getPinnedStops();
+  const cleanStop = (stopName || '').toLowerCase().trim();
+  const cleanLine = normalizeLineKey(lineKey || '');
   return current.some((p) => {
-    const matchesLine = normalizeLineKey(p.lineKey) === normalizeLineKey(lineKey);
-    const matchesName = p.stopName.toLowerCase().trim() === stopName.toLowerCase().trim();
+    if (!p) return false;
+    const matchesLine = normalizeLineKey(p.lineKey || '') === cleanLine;
+    const matchesName = (p.stopName || '').toLowerCase().trim() === cleanStop;
     if (!direction) return matchesLine && matchesName;
     return matchesLine && matchesName && p.direction === direction;
   });
@@ -1039,19 +1049,20 @@ export function getStopRealtimeDeparture(
   isApproaching: boolean;
   status: 'on_time' | 'delayed' | 'disrupted';
 } {
-  const normKey = normalizeLineKey(lineKey);
+  const validDate = (baseDate instanceof Date && !isNaN(baseDate.getTime())) ? baseDate : getAlignedNow();
+  const normKey = normalizeLineKey(lineKey || 'M13');
   const meta = RATP_LINES_METADATA[normKey] || RATP_LINES_METADATA['M13'];
-  const hour = baseDate.getHours();
-  const isWeekend = baseDate.getDay() === 0 || baseDate.getDay() === 6;
+  const hour = validDate.getHours();
+  const isWeekend = validDate.getDay() === 0 || validDate.getDay() === 6;
   const headwayMin = getHeadwayMinutes(meta, hour, isWeekend);
   const headwaySec = Math.max(90, Math.round(headwayMin * 60));
 
   // Déphasage naturel selon la position de l'arrêt le long du parcours (2 min par arrêt)
-  const linePhaseOffset = (stopOrder * 125) % headwaySec;
-  const seedKey = `${stopId}_${normKey}_${directionCode}`;
+  const linePhaseOffset = ((stopOrder || 1) * 125) % headwaySec;
+  const seedKey = `${stopId || 'stop'}_${normKey}_${directionCode || 'DIR'}`;
   const pseudoRandom = Math.abs(hashString(seedKey)) % 30;
 
-  const totalCurrentSeconds = Math.floor(baseDate.getTime() / 1000);
+  const totalCurrentSeconds = Math.floor(validDate.getTime() / 1000);
   const cyclePos = (totalCurrentSeconds + linePhaseOffset + pseudoRandom) % headwaySec;
   const secondsUntilNext = headwaySec - cyclePos;
 

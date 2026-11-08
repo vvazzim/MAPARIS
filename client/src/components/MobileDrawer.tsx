@@ -60,7 +60,7 @@ export const MobileDrawer: React.FC = () => {
   const filteredHubs = PARIS_TRANSPORT_HUBS.filter((h) => {
     if (!hubSearch.trim()) return true;
     const q = hubSearch.toLowerCase().trim();
-    return h.name.toLowerCase().includes(q) || h.lines.some((l) => l.toLowerCase().includes(q));
+    return Boolean(h.name && h.name.toLowerCase().includes(q)) || Boolean(h.lines && h.lines.some((l) => l && l.toLowerCase().includes(q)));
   });
 
   const handleReturnToMap = () => {

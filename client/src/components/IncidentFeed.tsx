@@ -44,12 +44,11 @@ export const IncidentFeed: React.FC = () => {
       return false;
     }
     if (searchFilter.trim()) {
-      const q = searchFilter.toLowerCase();
-      return (
-        incident.location_name.toLowerCase().includes(q) ||
-        incident.description.toLowerCase().includes(q) ||
-        incident.source.toLowerCase().includes(q)
-      );
+      const q = (searchFilter || '').toLowerCase().trim();
+      const loc = (incident.location_name || '').toLowerCase();
+      const desc = (incident.description || '').toLowerCase();
+      const src = (incident.source || '').toLowerCase();
+      return loc.includes(q) || desc.includes(q) || src.includes(q);
     }
     return true;
   });

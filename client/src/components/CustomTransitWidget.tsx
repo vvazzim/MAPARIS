@@ -85,7 +85,12 @@ export function loadWidgetConfig(): CustomWidgetConfig {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.lines)) {
-        return { ...DEFAULT_WIDGET_CONFIG, ...parsed };
+        const validLines = parsed.lines.filter((l: any) => l && l.lineKey && l.stopName);
+        return { 
+          ...DEFAULT_WIDGET_CONFIG, 
+          ...parsed, 
+          lines: validLines.length > 0 ? validLines : DEFAULT_WIDGET_CONFIG.lines 
+        };
       }
     }
   } catch (err) {
@@ -365,7 +370,7 @@ export const CustomTransitWidget: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                config.lines.map((item, index) => {
+                config.lines.filter(Boolean).map((item, index) => {
                   const liveNow = ticker ? getAlignedNow() : getAlignedNow();
                   const style = getLineStyle(item.lineKey);
                   const dep = getStopRealtimeDeparture(
