@@ -40,8 +40,8 @@ export class TransitAutomationService {
         disrup.impactedSection ? ` [Tronçon: ${disrup.impactedSection}]` : ''
       }${disrup.estimatedResolution ? ` • ${disrup.estimatedResolution}` : ''}`;
 
-      // 4 heures de TTL renouvelables
-      const expiresAt = new Date(Date.now() + 4 * 3600 * 1000).toISOString();
+      // 24 heures de TTL renouvelables (garantie 24h d'affichage pour les fermetures préfecture et grèves)
+      const expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
 
       if (!existing) {
         const newIncident: Incident = {

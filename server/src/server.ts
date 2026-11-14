@@ -33,6 +33,21 @@ async function bootstrap() {
     // Active la synchronisation automatique des Grèves, Retards & Perturbations Réseau (toutes les 5 min)
     transitAutomationService.startPolling(5);
 
+    // Master Daily Sync : déclenchement garanti au moins une fois par 24h
+    setInterval(async () => {
+      console.log('🔄 [Master Daily Sync] Exécution du cycle automatique de synchronisation 24h...');
+      try {
+        await Promise.allSettled([
+          transitAutomationService.syncDisruptionsToIncidents(),
+          mediaManifService.syncNow(),
+          telegramScraperService.syncNow(),
+        ]);
+        console.log('✅ [Master Daily Sync] Cycle 24h terminé.');
+      } catch (err) {
+        console.error('❌ [Master Daily Sync] Erreur lors du cycle 24h:', err);
+      }
+    }, 24 * 60 * 60 * 1000);
+
     console.log(`
 =====================================================
 🛡️  MAPARIS - SERVEUR DÉMARRÉ

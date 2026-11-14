@@ -170,8 +170,8 @@ export class MediaManifService {
         if (!isInsideIdfArea) continue;
         parisCount++;
 
-        // 2. Filtre de fraîcheur stricte : uniquement les points en direct récents (< 30 minutes, fini les 120min)
-        if (isOld || ageSec > 1800) {
+        // 2. Filtre de fraîcheur 24h : conservation de l'ensemble des points actifs sur la journée (au moins 24h)
+        if (ageSec > 86400) {
           continue;
         }
 
@@ -187,8 +187,8 @@ export class MediaManifService {
           addressName = getReadableLocation(lat, lng);
         }
 
-        // 5. Ingestion avec clustering et TTL dynamique plafonné à 30 min max (1800s)
-        const remainingTtlSec = Math.max(300, 1800 - ageSec);
+        // 5. Ingestion avec clustering et TTL dynamique 24h (86400s)
+        const remainingTtlSec = Math.max(3600, 86400 - ageSec);
         const { incident, isClusterMerge } = await incidentRepository.processIncidentReport({
           lat,
           lng,
@@ -219,11 +219,11 @@ export class MediaManifService {
         clusteredMerged += mergedCount;
       }
 
-      // 6. RÈGLE STRICTE : Si un point MediaManif a disparu du flux MediaManif OU dépasse 30 minutes -> SUPPRIMÉ IMMÉDIATEMENT !
+      // 6. Nettoyage des points ayant dépassé 24 heures (au moins un cycle complet par 24h)
       const liveMediaManifIds = new Set(rawPoints.map((p) => String(p.id)));
       const allIncidents = await incidentRepository.getAll({ limit: 1000 });
       const nowMs = Date.now();
-      const maxAgeMs = 30 * 60 * 1000; // 30 minutes max au lieu de 120min
+      const maxAgeMs = 24 * 60 * 60 * 1000; // 24 heures max
       let expiredMediaManifCount = 0;
 
       for (const inc of allIncidents) {
@@ -242,7 +242,7 @@ export class MediaManifService {
             expiredMediaManifCount++;
             console.log(
               `🧹 [MediaManif Sync] Signalement [${inc.id}] retiré immédiatement (${
-                isDisappearedFromMediaManif ? 'disparu du flux MediaManif' : 'durée > 30min dépassée'
+                isDisappearedFromMediaManif ? 'disparu du flux MediaManif' : 'durée > 24h dépassée'
               })`
             );
           }

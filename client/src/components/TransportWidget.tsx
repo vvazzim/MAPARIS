@@ -8,7 +8,8 @@ import {
   RefreshCw, 
   Radio,
   Star,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle
 } from 'lucide-react';
 import { PARIS_TRANSPORT_HUBS } from '../data/ratpHubs';
 import { useIncidentStore } from '../store/useIncidentStore';
@@ -107,13 +108,14 @@ const StationDepartureBoard: React.FC<{ station: MetroStationStatus }> = ({ stat
 
 export const TransportWidget: React.FC = () => {
   const { showTransportWidget, toggleTransportWidget, flyTo, setMobileActiveTab, openMetroRouteModal, t } = useIncidentStore();
-  const [filter, setFilter] = useState<'all' | 'disrupted'>('all');
+  const [filter, setFilter] = useState<'all' | 'closed' | 'disrupted'>('all');
   const [tick, setTick] = useState(0);
 
   if (!showTransportWidget) return null;
 
   const filteredStations = PARIS_TRANSPORT_HUBS.filter((station) => {
-    if (filter === 'disrupted') return station.status !== 'normal';
+    if (filter === 'closed') return station.status === 'closed';
+    if (filter === 'disrupted') return station.status === 'disrupted';
     return true;
   });
 
@@ -183,6 +185,21 @@ export const TransportWidget: React.FC = () => {
             Actualisation continue
           </span>
         </div>
+
+        {/* Alerte Sécurité Fermetures Exceptionnelles */}
+        {closedCount > 0 && (
+          <div className="p-3 bg-rose-950/50 border-b border-rose-800/60 flex items-start gap-2.5 text-xs shrink-0 animate-pulse">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-bold text-rose-200">
+                Alerte Préfecture de Police : {closedCount} stations fermées à Paris
+              </div>
+              <p className="text-[11px] text-rose-300/90 mt-0.5 leading-snug">
+                Par mesure de sécurité (Manifestations). Les trains ne marquent pas l'arrêt et les correspondances sont fermées.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stats Summary */}
         <div className="grid grid-cols-2 gap-2 p-3 bg-dark-950/60 border-b border-dark-800 text-xs shrink-0">
@@ -291,7 +308,7 @@ export const TransportWidget: React.FC = () => {
         <div className="flex p-2 bg-dark-900 border-b border-dark-800/80 gap-1 text-xs shrink-0">
           <button
             onClick={() => setFilter('all')}
-            className={`flex-1 py-1.5 rounded-md font-medium transition cursor-pointer ${
+            className={`flex-1 py-1.5 rounded-md font-medium transition cursor-pointer text-center ${
               filter === 'all'
                 ? 'bg-dark-800 text-white shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -300,14 +317,24 @@ export const TransportWidget: React.FC = () => {
             {t.transport.allTab} ({PARIS_TRANSPORT_HUBS.length})
           </button>
           <button
-            onClick={() => setFilter('disrupted')}
-            className={`flex-1 py-1.5 rounded-md font-medium transition cursor-pointer ${
-              filter === 'disrupted'
-                ? 'bg-dark-800 text-amber-400 shadow-sm'
+            onClick={() => setFilter('closed')}
+            className={`flex-1 py-1.5 rounded-md font-medium transition cursor-pointer text-center ${
+              filter === 'closed'
+                ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            {t.transport.disrupted} ({closedCount + disruptedCount})
+            ⛔ Fermées ({closedCount})
+          </button>
+          <button
+            onClick={() => setFilter('disrupted')}
+            className={`flex-1 py-1.5 rounded-md font-medium transition cursor-pointer text-center ${
+              filter === 'disrupted'
+                ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            ⚠️ Perturbées ({disruptedCount})
           </button>
         </div>
 

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { osintIngestionService } from '../services/osintIngestionService.js';
 import { telegramScraperService } from '../services/telegramScraperService.js';
 import { mediaManifService } from '../services/mediaManifService.js';
+import { transitAutomationService } from '../services/transitAutomationService.js';
 
 const parseTextSchema = z.object({
   text: z.string().min(5, 'Le message brut doit contenir au moins 5 caractères'),
@@ -11,6 +12,36 @@ const parseTextSchema = z.object({
 });
 
 export const osintRoutes: FastifyPluginAsync = async (fastify) => {
+  /**
+   * POST /api/sync/all & GET /api/sync/all
+   * Déclencheur unifié 24h : Manif (MediaManif 24h) + Telegram OSINT + RATP/SNCF (21 stations fermées)
+   */
+  const handleSyncAll = async () => {
+    console.log('🔄 [Trigger Sync] Déclenchement de la synchronisation complète 24h...');
+    const [transitRes, mmRes, tgRes] = await Promise.allSettled([
+      transitAutomationService.syncDisruptionsToIncidents(),
+      mediaManifService.syncNow(),
+      telegramScraperService.syncNow(),
+    ]);
+
+    const transitData = transitRes.status === 'fulfilled' ? transitRes.value : { success: false, error: String(transitRes.reason) };
+    const mmData = mmRes.status === 'fulfilled' ? mmRes.value : { success: false, error: String(mmRes.reason) };
+    const tgData = tgRes.status === 'fulfilled' ? tgRes.value : { success: false, error: String(tgRes.reason) };
+
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      summary: {
+        transit: transitData,
+        mediaManif: mmData,
+        telegram: tgData,
+      },
+    };
+  };
+
+  fastify.post('/api/sync/all', handleSyncAll);
+  fastify.get('/api/sync/all', handleSyncAll);
+
   /**
    * POST /api/osint/simulate
    * Simule l'arrivée instantanée d'un flux OSINT réaliste (Telegram, Twitter/X, Préfecture)
